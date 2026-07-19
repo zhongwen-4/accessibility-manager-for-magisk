@@ -1,6 +1,6 @@
 # Cockpit — Accessibility-Manager
 
-Focus: Validate the manager build workflow, then test the Miuix manager and automatic module installation on a rooted Magisk device.
+Focus: Validate the restored Miuix homepage and automatic module installation on a rooted Magisk device.
 
 ## In flight
 

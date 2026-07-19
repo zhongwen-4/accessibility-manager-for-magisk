@@ -29,6 +29,8 @@ Verified:
 - The debug APK assembles and its v2 signature verifies.
 - The generated Magisk module ZIP is readable and byte-identical to the APK asset.
 - The `构建管理器` workflow now tests, verifies, packages, and uploads the manager APK.
+- Restored the service list as the permanent Miuix homepage and moved automatic-install progress, errors, retry, and reboot actions into an inline status card.
+- Manager version advanced to 2.0.1 (4).
 
 ## Open questions
 

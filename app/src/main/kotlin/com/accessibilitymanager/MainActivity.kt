@@ -67,11 +67,18 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var repository: AccessibilityServicesRepository
     private lateinit var moduleInstaller: MagiskModuleInstaller
-    private var screenState by mutableStateOf<ScreenState>(
-        ScreenState.Loading(R.string.module_installing_title, R.string.module_installing_message),
+    private var homeState by mutableStateOf(
+        HomeState(
+            moduleNotice = ModuleNotice(
+                R.string.module_installing_title,
+                R.string.module_installing_message,
+                loading = true,
+            ),
+        ),
     )
     private var moduleOperationRunning = false
     private var moduleReady = false
+    private var serviceLoadRunning = false
     private var destroyed = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -83,7 +90,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             MiuixTheme(colors = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()) {
                 AccessibilityManagerScreen(
-                    state = screenState,
+                    state = homeState,
+                    controlsEnabled = moduleReady,
                     onRefresh = ::refresh,
                     onToggle = ::toggleService,
                     onAction = ::performStateAction,
@@ -91,24 +99,25 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        loadServices(showFullProgress = true)
         ensureModuleReady()
     }
 
     private fun refresh() {
-        if (moduleReady) {
-            loadServices(showFullProgress = false)
-        } else {
-            ensureModuleReady()
-        }
+        loadServices(showFullProgress = false)
+        if (!moduleReady) ensureModuleReady()
     }
 
     private fun ensureModuleReady() {
         if (moduleOperationRunning) return
         moduleOperationRunning = true
         moduleReady = false
-        screenState = ScreenState.Loading(
-            R.string.module_installing_title,
-            R.string.module_installing_message,
+        homeState = homeState.copy(
+            moduleNotice = ModuleNotice(
+                R.string.module_installing_title,
+                R.string.module_installing_message,
+                loading = true,
+            ),
         )
 
         executor.execute {
@@ -119,16 +128,19 @@ class MainActivity : ComponentActivity() {
                 when {
                     result.isSuccessful && result.state == MagiskModuleInstaller.State.READY -> {
                         moduleReady = true
-                        loadServices(showFullProgress = true)
+                        homeState = homeState.copy(moduleNotice = null)
+                        loadServices(showFullProgress = false)
                     }
 
                     result.isSuccessful &&
                         result.state == MagiskModuleInstaller.State.REBOOT_REQUIRED -> {
-                        screenState = ScreenState.Message(
-                            R.string.module_ready_title,
-                            R.string.module_ready_message,
-                            StateAction.REBOOT,
-                            R.string.reboot_now,
+                        homeState = homeState.copy(
+                            moduleNotice = ModuleNotice(
+                                R.string.module_ready_title,
+                                R.string.module_ready_message,
+                                StateAction.REBOOT,
+                                R.string.reboot_now,
+                            ),
                         )
                     }
 
@@ -139,12 +151,13 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun loadServices(showFullProgress: Boolean) {
-        val current = screenState
-        if (current is ScreenState.Services && current.refreshing) return
-        screenState = if (!showFullProgress && current is ScreenState.Services) {
-            current.copy(refreshing = true)
+        if (serviceLoadRunning) return
+        serviceLoadRunning = true
+        val current = homeState
+        homeState = if (showFullProgress && current.services.isEmpty()) {
+            current.copy(listState = ServiceListState.LOADING, refreshing = false)
         } else {
-            ScreenState.Loading(R.string.loading_services_title, R.string.loading_services_message)
+            current.copy(refreshing = true)
         }
 
         executor.execute {
@@ -158,17 +171,32 @@ class MainActivity : ComponentActivity() {
                     )
                 }
                 mainHandler.post {
-                    if (!destroyed) screenState = ScreenState.Services(services)
+                    if (!destroyed) {
+                        serviceLoadRunning = false
+                        homeState = homeState.copy(
+                            services = services,
+                            listState = ServiceListState.READY,
+                            refreshing = false,
+                        )
+                    }
                 }
             } catch (_: RuntimeException) {
                 mainHandler.post {
                     if (!destroyed) {
-                        screenState = ScreenState.Message(
-                            R.string.load_failed_title,
-                            R.string.load_failed_message,
-                            StateAction.RETRY_LIST,
-                            R.string.retry,
-                        )
+                        serviceLoadRunning = false
+                        if (homeState.services.isEmpty()) {
+                            homeState = homeState.copy(
+                                listState = ServiceListState.ERROR,
+                                refreshing = false,
+                            )
+                        } else {
+                            homeState = homeState.copy(refreshing = false)
+                            Toast.makeText(
+                                this,
+                                R.string.load_failed_message,
+                                Toast.LENGTH_LONG,
+                            ).show()
+                        }
                     }
                 }
             }
@@ -176,6 +204,10 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun toggleService(item: ServiceUiModel, enabled: Boolean) {
+        if (!moduleReady) {
+            ensureModuleReady()
+            return
+        }
         updateService(item.componentName) { it.copy(pending = true) }
         executor.execute {
             val result = rootServiceManager.setEnabled(item.componentName, enabled)
@@ -196,9 +228,8 @@ class MainActivity : ComponentActivity() {
         componentName: String,
         transform: (ServiceUiModel) -> ServiceUiModel,
     ) {
-        val current = screenState as? ScreenState.Services ?: return
-        screenState = current.copy(
-            services = current.services.map { service ->
+        homeState = homeState.copy(
+            services = homeState.services.map { service ->
                 if (service.componentName == componentName) transform(service) else service
             },
         )
@@ -215,7 +246,13 @@ class MainActivity : ComponentActivity() {
     private fun requestReboot() {
         if (moduleOperationRunning) return
         moduleOperationRunning = true
-        screenState = ScreenState.Loading(R.string.rebooting_title, R.string.rebooting_message)
+        homeState = homeState.copy(
+            moduleNotice = ModuleNotice(
+                R.string.rebooting_title,
+                R.string.rebooting_message,
+                loading = true,
+            ),
+        )
         executor.execute {
             val result = moduleInstaller.reboot()
             mainHandler.post {
@@ -243,11 +280,13 @@ class MainActivity : ComponentActivity() {
                 else -> R.string.module_root_denied
             }
         }
-        screenState = ScreenState.Message(
-            title,
-            message,
-            StateAction.RETRY_MODULE,
-            R.string.retry,
+        homeState = homeState.copy(
+            moduleNotice = ModuleNotice(
+                title,
+                message,
+                StateAction.RETRY_MODULE,
+                R.string.retry,
+            ),
         )
     }
 
@@ -269,24 +308,26 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private sealed interface ScreenState {
-    data class Loading(
-        @param:StringRes val title: Int,
-        @param:StringRes val message: Int,
-    ) : ScreenState
+private data class HomeState(
+    val services: List<ServiceUiModel> = emptyList(),
+    val listState: ServiceListState = ServiceListState.LOADING,
+    val refreshing: Boolean = false,
+    val moduleNotice: ModuleNotice? = null,
+)
 
-    data class Services(
-        val services: List<ServiceUiModel>,
-        val refreshing: Boolean = false,
-    ) : ScreenState
-
-    data class Message(
-        @param:StringRes val title: Int,
-        @param:StringRes val message: Int,
-        val action: StateAction,
-        @param:StringRes val actionText: Int,
-    ) : ScreenState
+private enum class ServiceListState {
+    LOADING,
+    READY,
+    ERROR,
 }
+
+private data class ModuleNotice(
+    @param:StringRes val title: Int,
+    @param:StringRes val message: Int,
+    val action: StateAction? = null,
+    @param:StringRes val actionText: Int? = null,
+    val loading: Boolean = false,
+)
 
 private enum class StateAction {
     RETRY_MODULE,
@@ -304,31 +345,21 @@ private data class ServiceUiModel(
 
 @Composable
 private fun AccessibilityManagerScreen(
-    state: ScreenState,
+    state: HomeState,
+    controlsEnabled: Boolean,
     onRefresh: () -> Unit,
     onToggle: (ServiceUiModel, Boolean) -> Unit,
     onAction: (StateAction) -> Unit,
 ) {
-    val summary = if (state is ScreenState.Services) {
-        pluralStringResource(
-            R.plurals.services_summary,
-            state.services.size,
-            state.services.size,
-            state.services.count { it.enabled },
-        )
-    } else {
-        ""
-    }
-
     Scaffold(
         topBar = {
             TopAppBar(
                 title = stringResource(R.string.app_name),
                 actions = {
-                    if (state is ScreenState.Services && state.refreshing) {
+                    if (state.refreshing) {
                         CircularProgressIndicator(size = 24.dp)
                     } else {
-                        IconButton(onClick = onRefresh, enabled = state !is ScreenState.Loading) {
+                        IconButton(onClick = onRefresh) {
                             Icon(
                                 imageVector = Icons.Rounded.Refresh,
                                 contentDescription = stringResource(R.string.refresh),
@@ -339,47 +370,30 @@ private fun AccessibilityManagerScreen(
             )
         },
     ) { innerPadding ->
-        when (state) {
-            is ScreenState.Loading -> StatusContent(
-                innerPadding = innerPadding,
-                title = stringResource(state.title),
-                message = stringResource(state.message),
-                loading = true,
-            )
-
-            is ScreenState.Message -> StatusContent(
-                innerPadding = innerPadding,
-                title = stringResource(state.title),
-                message = stringResource(state.message),
-                actionText = stringResource(state.actionText),
-                onAction = { onAction(state.action) },
-            )
-
-            is ScreenState.Services -> ServicesContent(
-                innerPadding = innerPadding,
-                services = state.services,
-                summary = summary,
-                onToggle = onToggle,
-            )
-        }
+        HomeContent(
+            innerPadding = innerPadding,
+            state = state,
+            controlsEnabled = controlsEnabled,
+            onToggle = onToggle,
+            onAction = onAction,
+        )
     }
 }
 
 @Composable
-private fun ServicesContent(
+private fun HomeContent(
     innerPadding: PaddingValues,
-    services: List<ServiceUiModel>,
-    summary: String,
+    state: HomeState,
+    controlsEnabled: Boolean,
     onToggle: (ServiceUiModel, Boolean) -> Unit,
+    onAction: (StateAction) -> Unit,
 ) {
-    if (services.isEmpty()) {
-        StatusContent(
-            innerPadding = innerPadding,
-            title = stringResource(R.string.no_services_title),
-            message = stringResource(R.string.no_services_message),
-        )
-        return
-    }
+    val summary = pluralStringResource(
+        R.plurals.services_summary,
+        state.services.size,
+        state.services.size,
+        state.services.count { it.enabled },
+    )
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -391,16 +405,95 @@ private fun ServicesContent(
         ),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        item(key = "summary") {
-            Text(
-                text = summary,
-                modifier = Modifier.padding(start = 4.dp, bottom = 2.dp),
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                style = MiuixTheme.textStyles.body1,
-            )
+        state.moduleNotice?.let { notice ->
+            item(key = "module-notice") {
+                ModuleNoticeCard(notice = notice, onAction = onAction)
+            }
         }
-        items(services, key = { it.componentName }) { service ->
-            ServiceRow(service = service, onToggle = onToggle)
+
+        when (state.listState) {
+            ServiceListState.LOADING -> item(key = "services-loading") {
+                ListStatusContent(
+                    title = stringResource(R.string.loading_services_title),
+                    message = stringResource(R.string.loading_services_message),
+                    loading = true,
+                )
+            }
+
+            ServiceListState.ERROR -> item(key = "services-error") {
+                ListStatusContent(
+                    title = stringResource(R.string.load_failed_title),
+                    message = stringResource(R.string.load_failed_message),
+                    actionText = stringResource(R.string.retry),
+                    onAction = { onAction(StateAction.RETRY_LIST) },
+                )
+            }
+
+            ServiceListState.READY -> {
+                if (state.services.isEmpty()) {
+                    item(key = "services-empty") {
+                        ListStatusContent(
+                            title = stringResource(R.string.no_services_title),
+                            message = stringResource(R.string.no_services_message),
+                        )
+                    }
+                } else {
+                    item(key = "summary") {
+                        Text(
+                            text = summary,
+                            modifier = Modifier.padding(start = 4.dp, bottom = 2.dp),
+                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                            style = MiuixTheme.textStyles.body1,
+                        )
+                    }
+                    items(state.services, key = { it.componentName }) { service ->
+                        ServiceRow(
+                            service = service,
+                            controlsEnabled = controlsEnabled,
+                            onToggle = onToggle,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ModuleNoticeCard(
+    notice: ModuleNotice,
+    onAction: (StateAction) -> Unit,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (notice.loading) {
+                CircularProgressIndicator(size = 28.dp)
+                Spacer(Modifier.width(14.dp))
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(notice.title),
+                    color = MiuixTheme.colorScheme.onSurface,
+                    style = MiuixTheme.textStyles.headline1,
+                    fontWeight = FontWeight.Medium,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = stringResource(notice.message),
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    style = MiuixTheme.textStyles.body2,
+                )
+            }
+            if (notice.action != null && notice.actionText != null) {
+                Spacer(Modifier.width(12.dp))
+                TextButton(
+                    text = stringResource(notice.actionText),
+                    onClick = { onAction(notice.action) },
+                )
+            }
         }
     }
 }
@@ -408,12 +501,17 @@ private fun ServicesContent(
 @Composable
 private fun ServiceRow(
     service: ServiceUiModel,
+    controlsEnabled: Boolean,
     onToggle: (ServiceUiModel, Boolean) -> Unit,
 ) {
     val bitmap = remember(service.componentName, service.icon) { service.icon.toImageBitmap() }
     Card(
         modifier = Modifier.fillMaxWidth(),
-        onClick = if (service.pending) null else ({ onToggle(service, !service.enabled) }),
+        onClick = if (service.pending || !controlsEnabled) {
+            null
+        } else {
+            ({ onToggle(service, !service.enabled) })
+        },
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -454,6 +552,7 @@ private fun ServiceRow(
                     Switch(
                         checked = service.enabled,
                         onCheckedChange = { onToggle(service, it) },
+                        enabled = controlsEnabled,
                     )
                 }
             }
@@ -462,8 +561,7 @@ private fun ServiceRow(
 }
 
 @Composable
-private fun StatusContent(
-    innerPadding: PaddingValues,
+private fun ListStatusContent(
     title: String,
     message: String,
     loading: Boolean = false,
@@ -472,9 +570,8 @@ private fun StatusContent(
 ) {
     Column(
         modifier = Modifier
-            .fillMaxSize()
-            .padding(innerPadding)
-            .padding(horizontal = 32.dp),
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 56.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {

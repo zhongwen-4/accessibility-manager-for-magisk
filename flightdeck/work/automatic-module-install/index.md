@@ -29,6 +29,7 @@ Verified:
 - Bundled module archive is valid and byte-identical to the APK asset.
 - Existing `a11yctl` regression tests pass.
 - The `构建管理器` workflow now runs the automated checks and verifies the embedded module before uploading the APK.
+- Module setup states now appear inside the Miuix homepage instead of replacing the service list; controls remain disabled until the module is ready.
 
 ## Open questions
 
