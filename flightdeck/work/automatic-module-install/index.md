@@ -11,6 +11,7 @@ Run the `构建管理器` and `打包模块` workflows once, then install the AP
 ## Read now
 
 - `flightdeck/knowledge/android/automatic-magisk-module-packaging.md`
+- `flightdeck/knowledge/android/manager-operation-log.md`
 
 ## Read if
 
@@ -31,6 +32,7 @@ Verified:
 - The `构建管理器` workflow now runs the automated checks and verifies the embedded module before uploading the APK.
 - Module setup states now appear inside the Miuix homepage instead of replacing the service list; controls remain disabled until the module is ready.
 - The `打包模块` workflow now regression-tests, reproducibly packages, validates, and uploads the standalone Magisk ZIP.
+- Module detection, installation, reboot requirements, and failures now produce bounded high-level entries in the manager log without storing raw Root output.
 
 ## Open questions
 

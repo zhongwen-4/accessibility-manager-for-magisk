@@ -4,6 +4,13 @@
     <string name="refresh">刷新</string>
     <string name="home">主页</string>
     <string name="services">服务</string>
+    <string name="logs">日志</string>
+    <string name="copy_logs">复制日志</string>
+    <string name="clear_logs">清空日志</string>
+    <string name="logs_copied">日志已复制。</string>
+    <string name="logs_cleared">日志已清空。</string>
+    <string name="no_logs_title">暂无操作日志</string>
+    <string name="no_logs_message">管理器执行操作后会在这里显示记录。</string>
     <string name="manager_running">管理组件运行中</string>
     <string name="manager_unavailable">管理组件不可用</string>
     <string name="module_version_short">模块 %1$s</string>
@@ -45,4 +52,16 @@
     <string name="reboot_now">立即重启</string>
     <string name="rebooting_title">正在重启设备</string>
     <string name="rebooting_message">正在等待系统重新启动…</string>
+    <string name="log_app_started">管理器已启动。</string>
+    <string name="log_module_check_started">正在检测管理模块。</string>
+    <string name="log_module_ready">管理模块已就绪。</string>
+    <string name="log_module_reboot_required">模块安装完成，需要重启设备。</string>
+    <string name="log_module_failed">模块操作失败：%1$s</string>
+    <string name="log_services_loaded">无障碍服务列表已加载，共 %1$d 项。</string>
+    <string name="log_services_load_failed">加载无障碍服务失败。</string>
+    <string name="log_service_enabled">已启用 %1$s。</string>
+    <string name="log_service_disabled">已停用 %1$s。</string>
+    <string name="log_service_toggle_failed">无法更改 %1$s：%2$s</string>
+    <string name="log_reboot_requested">已请求重启设备。</string>
+    <string name="log_reboot_failed">设备重启失败：%1$s</string>
 </resources>

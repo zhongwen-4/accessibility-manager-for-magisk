@@ -4,6 +4,13 @@
     <string name="refresh">Refresh</string>
     <string name="home">Home</string>
     <string name="services">Services</string>
+    <string name="logs">Logs</string>
+    <string name="copy_logs">Copy logs</string>
+    <string name="clear_logs">Clear logs</string>
+    <string name="logs_copied">Logs copied.</string>
+    <string name="logs_cleared">Logs cleared.</string>
+    <string name="no_logs_title">No operation logs</string>
+    <string name="no_logs_message">Manager operations will appear here.</string>
     <string name="manager_running">Manager active</string>
     <string name="manager_unavailable">Manager unavailable</string>
     <string name="module_version_short">Module %1$s</string>
@@ -46,4 +53,16 @@
     <string name="reboot_now">Restart now</string>
     <string name="rebooting_title">Restarting device</string>
     <string name="rebooting_message">Waiting for the system to restart…</string>
+    <string name="log_app_started">Manager started.</string>
+    <string name="log_module_check_started">Checking the manager module.</string>
+    <string name="log_module_ready">Manager module is ready.</string>
+    <string name="log_module_reboot_required">Module installation completed; restart required.</string>
+    <string name="log_module_failed">Module operation failed: %1$s</string>
+    <string name="log_services_loaded">Accessibility service list loaded. Total: %1$d</string>
+    <string name="log_services_load_failed">Failed to load accessibility services.</string>
+    <string name="log_service_enabled">Enabled %1$s.</string>
+    <string name="log_service_disabled">Disabled %1$s.</string>
+    <string name="log_service_toggle_failed">Could not change %1$s: %2$s</string>
+    <string name="log_reboot_requested">Device restart requested.</string>
+    <string name="log_reboot_failed">Device restart failed: %1$s</string>
 </resources>

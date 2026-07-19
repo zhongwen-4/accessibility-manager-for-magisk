@@ -6,12 +6,13 @@ Implementation complete. Awaiting UI and Root behavior validation on a rooted An
 
 ## Next
 
-Run the `构建管理器` workflow once, then install its APK artifact on a rooted Magisk device; inspect the upstream-derived dashboard, bottom navigation, light/dark UI states, and verify module installation, reboot, refresh, and service toggling.
+Run the `构建管理器` workflow once, then install its APK artifact on a rooted Magisk device; inspect the dashboard, services, and log pages in light/dark modes, then verify module installation, reboot, refresh, logging, and service toggling.
 
 ## Read now
 
 - `flightdeck/knowledge/android/automatic-magisk-module-packaging.md`
 - `flightdeck/knowledge/android/miuix-compose-toolchain-compatibility.md`
+- `flightdeck/knowledge/android/manager-operation-log.md`
 
 ## Read if
 
@@ -32,10 +33,12 @@ Verified:
 - Restored the service list as the permanent Miuix homepage and moved automatic-install progress, errors, retry, and reboot actions into an inline status card.
 - Adapted the homepage directly from SukiSU Ultra `HomeMiuix.kt` and the standard branch of `BottomBarMiuix.kt` at `main@278d822`, preserving its TopAppBar, three-card status layout, oversized offset status icon, Tilt feedback, information-card typography, and navigation structure.
 - Added the GPL-3.0 source revision and adapted-file attribution to `THIRD_PARTY_NOTICES.md`.
-- Manager version advanced to 2.2.0 (6).
+- Added a persistent Miuix log page with severity icons, newest-first records, copy and clear actions, and high-level events for module and accessibility-service operations.
+- Manager version advanced to 2.3.0 (7).
 
 ## Open questions
 
 - Rooted-device UI and behavior validation requires a connected Android device.
 - Dashboard screenshots could not be captured because no Android device or emulator is connected.
+- Log persistence, clipboard output, and clear behavior require connected-device validation.
 - The shell regression test could not be rerun in this Windows environment because no Bash or WSL distribution is installed.

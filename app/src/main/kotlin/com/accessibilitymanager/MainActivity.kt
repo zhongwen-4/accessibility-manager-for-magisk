@@ -1,5 +1,8 @@
 package com.accessibilitymanager
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.graphics.Canvas
 import android.graphics.drawable.Drawable
 import android.os.Build
@@ -32,8 +35,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccessibilityNew
+import androidx.compose.material.icons.rounded.Article
 import androidx.compose.material.icons.rounded.CheckCircleOutline
+import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Cottage
+import androidx.compose.material.icons.rounded.DeleteSweep
+import androidx.compose.material.icons.rounded.ErrorOutline
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -55,6 +63,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.createBitmap
 import com.accessibilitymanager.data.AccessibilityServicesRepository
+import com.accessibilitymanager.data.ManagerLogEntry
+import com.accessibilitymanager.data.ManagerLogLevel
+import com.accessibilitymanager.data.ManagerLogStore
 import com.accessibilitymanager.root.MagiskModuleInstaller
 import com.accessibilitymanager.root.RootServiceManager
 import top.yukonga.miuix.kmp.basic.Card
@@ -75,6 +86,8 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.darkColorScheme
 import top.yukonga.miuix.kmp.theme.lightColorScheme
 import top.yukonga.miuix.kmp.utils.PressFeedbackType
+import java.text.DateFormat
+import java.util.Date
 import java.util.concurrent.Executors
 
 class MainActivity : ComponentActivity() {
@@ -84,6 +97,8 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var repository: AccessibilityServicesRepository
     private lateinit var moduleInstaller: MagiskModuleInstaller
+    private lateinit var logStore: ManagerLogStore
+    private var logEntries by mutableStateOf<List<ManagerLogEntry>>(emptyList())
     private var homeState by mutableStateOf(
         HomeState(
             moduleNotice = ModuleNotice(
@@ -103,15 +118,21 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         repository = AccessibilityServicesRepository(applicationContext)
         moduleInstaller = MagiskModuleInstaller(applicationContext)
+        logStore = ManagerLogStore(applicationContext)
+        logEntries = logStore.load()
+        addLog(ManagerLogLevel.INFO, R.string.log_app_started)
 
         setContent {
             MiuixTheme(colors = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()) {
                 AccessibilityManagerScreen(
                     state = homeState,
+                    logEntries = logEntries,
                     controlsEnabled = moduleReady,
                     onRefresh = ::refresh,
                     onToggle = ::toggleService,
                     onAction = ::performStateAction,
+                    onCopyLogs = ::copyLogs,
+                    onClearLogs = ::clearLogs,
                 )
             }
         }
@@ -129,6 +150,7 @@ class MainActivity : ComponentActivity() {
         if (moduleOperationRunning) return
         moduleOperationRunning = true
         moduleReady = false
+        addLog(ManagerLogLevel.INFO, R.string.log_module_check_started)
         homeState = homeState.copy(
             moduleNotice = ModuleNotice(
                 R.string.module_installing_title,
@@ -146,6 +168,7 @@ class MainActivity : ComponentActivity() {
                     result.isSuccessful && result.state == MagiskModuleInstaller.State.READY -> {
                         moduleReady = true
                         homeState = homeState.copy(moduleNotice = null)
+                        addLog(ManagerLogLevel.SUCCESS, R.string.log_module_ready)
                         loadServices(showFullProgress = false)
                     }
 
@@ -159,6 +182,7 @@ class MainActivity : ComponentActivity() {
                                 R.string.reboot_now,
                             ),
                         )
+                        addLog(ManagerLogLevel.SUCCESS, R.string.log_module_reboot_required)
                     }
 
                     else -> showModuleFailure(result.state)
@@ -195,12 +219,18 @@ class MainActivity : ComponentActivity() {
                             listState = ServiceListState.READY,
                             refreshing = false,
                         )
+                        addLog(
+                            ManagerLogLevel.INFO,
+                            R.string.log_services_loaded,
+                            services.size,
+                        )
                     }
                 }
             } catch (_: RuntimeException) {
                 mainHandler.post {
                     if (!destroyed) {
                         serviceLoadRunning = false
+                        addLog(ManagerLogLevel.ERROR, R.string.log_services_load_failed)
                         if (homeState.services.isEmpty()) {
                             homeState = homeState.copy(
                                 listState = ServiceListState.ERROR,
@@ -232,9 +262,20 @@ class MainActivity : ComponentActivity() {
                 if (destroyed) return@post
                 if (result.isSuccessful) {
                     updateService(item.componentName) { it.copy(enabled = enabled, pending = false) }
+                    addLog(
+                        ManagerLogLevel.SUCCESS,
+                        if (enabled) R.string.log_service_enabled else R.string.log_service_disabled,
+                        item.label,
+                    )
                     mainHandler.postDelayed({ loadServices(showFullProgress = false) }, 600)
                 } else {
                     updateService(item.componentName) { it.copy(pending = false) }
+                    addLog(
+                        ManagerLogLevel.ERROR,
+                        R.string.log_service_toggle_failed,
+                        item.label,
+                        getString(errorMessage(result.error)),
+                    )
                     Toast.makeText(this, errorMessage(result.error), Toast.LENGTH_LONG).show()
                 }
             }
@@ -263,6 +304,7 @@ class MainActivity : ComponentActivity() {
     private fun requestReboot() {
         if (moduleOperationRunning) return
         moduleOperationRunning = true
+        addLog(ManagerLogLevel.INFO, R.string.log_reboot_requested)
         homeState = homeState.copy(
             moduleNotice = ModuleNotice(
                 R.string.rebooting_title,
@@ -275,7 +317,14 @@ class MainActivity : ComponentActivity() {
             mainHandler.post {
                 if (destroyed) return@post
                 moduleOperationRunning = false
-                if (!result.isSuccessful) showModuleFailure(result.state)
+                if (!result.isSuccessful) {
+                    addLog(
+                        ManagerLogLevel.ERROR,
+                        R.string.log_reboot_failed,
+                        result.state.name,
+                    )
+                    showModuleFailure(result.state)
+                }
             }
         }
     }
@@ -305,6 +354,33 @@ class MainActivity : ComponentActivity() {
                 R.string.retry,
             ),
         )
+        addLog(
+            ManagerLogLevel.ERROR,
+            R.string.log_module_failed,
+            getString(message),
+        )
+    }
+
+    private fun addLog(
+        level: ManagerLogLevel,
+        @StringRes message: Int,
+        vararg formatArgs: Any,
+    ) {
+        logEntries = logStore.append(level, getString(message, *formatArgs))
+    }
+
+    private fun copyLogs() {
+        if (logEntries.isEmpty()) return
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val text = logEntries.joinToString(separator = "\n") { formatLogEntry(it) }
+        clipboard.setPrimaryClip(ClipData.newPlainText(getString(R.string.logs), text))
+        Toast.makeText(this, R.string.logs_copied, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun clearLogs() {
+        logStore.clear()
+        logEntries = emptyList()
+        Toast.makeText(this, R.string.logs_cleared, Toast.LENGTH_SHORT).show()
     }
 
     @StringRes
@@ -355,6 +431,7 @@ private enum class StateAction {
 private enum class ManagerPage {
     HOME,
     SERVICES,
+    LOGS,
 }
 
 private data class ServiceUiModel(
@@ -368,30 +445,49 @@ private data class ServiceUiModel(
 @Composable
 private fun AccessibilityManagerScreen(
     state: HomeState,
+    logEntries: List<ManagerLogEntry>,
     controlsEnabled: Boolean,
     onRefresh: () -> Unit,
     onToggle: (ServiceUiModel, Boolean) -> Unit,
     onAction: (StateAction) -> Unit,
+    onCopyLogs: () -> Unit,
+    onClearLogs: () -> Unit,
 ) {
     var selectedPage by remember { mutableStateOf(ManagerPage.HOME) }
     val homeScrollBehavior = MiuixScrollBehavior()
     val servicesScrollBehavior = MiuixScrollBehavior()
-    val currentScrollBehavior = if (selectedPage == ManagerPage.HOME) {
-        homeScrollBehavior
-    } else {
-        servicesScrollBehavior
+    val logsScrollBehavior = MiuixScrollBehavior()
+    val currentScrollBehavior = when (selectedPage) {
+        ManagerPage.HOME -> homeScrollBehavior
+        ManagerPage.SERVICES -> servicesScrollBehavior
+        ManagerPage.LOGS -> logsScrollBehavior
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = if (selectedPage == ManagerPage.HOME) {
-                    stringResource(R.string.app_name)
-                } else {
-                    stringResource(R.string.services)
+                title = when (selectedPage) {
+                    ManagerPage.HOME -> stringResource(R.string.app_name)
+                    ManagerPage.SERVICES -> stringResource(R.string.services)
+                    ManagerPage.LOGS -> stringResource(R.string.logs)
                 },
                 actions = {
-                    if (state.refreshing) {
+                    if (selectedPage == ManagerPage.LOGS) {
+                        if (logEntries.isNotEmpty()) {
+                            IconButton(onClick = onCopyLogs) {
+                                Icon(
+                                    imageVector = Icons.Rounded.ContentCopy,
+                                    contentDescription = stringResource(R.string.copy_logs),
+                                )
+                            }
+                            IconButton(onClick = onClearLogs) {
+                                Icon(
+                                    imageVector = Icons.Rounded.DeleteSweep,
+                                    contentDescription = stringResource(R.string.clear_logs),
+                                )
+                            }
+                        }
+                    } else if (state.refreshing) {
                         CircularProgressIndicator(size = 24.dp)
                     } else {
                         IconButton(onClick = onRefresh) {
@@ -421,6 +517,13 @@ private fun AccessibilityManagerScreen(
                     icon = Icons.Rounded.AccessibilityNew,
                     label = stringResource(R.string.services),
                 )
+                NavigationBarItem(
+                    modifier = Modifier.weight(1f),
+                    selected = selectedPage == ManagerPage.LOGS,
+                    onClick = { selectedPage = ManagerPage.LOGS },
+                    icon = Icons.Rounded.Article,
+                    label = stringResource(R.string.logs),
+                )
             }
         },
     ) { innerPadding ->
@@ -441,6 +544,12 @@ private fun AccessibilityManagerScreen(
                 onToggle = onToggle,
                 onAction = onAction,
                 scrollBehavior = servicesScrollBehavior,
+            )
+
+            ManagerPage.LOGS -> LogPage(
+                innerPadding = innerPadding,
+                entries = logEntries,
+                scrollBehavior = logsScrollBehavior,
             )
         }
     }
@@ -557,6 +666,88 @@ private fun ServicesPage(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LogPage(
+    innerPadding: PaddingValues,
+    entries: List<ManagerLogEntry>,
+    scrollBehavior: ScrollBehavior,
+) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxHeight()
+            .nestedScroll(scrollBehavior.nestedScrollConnection)
+            .padding(horizontal = 12.dp),
+        contentPadding = innerPadding,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        if (entries.isEmpty()) {
+            item(key = "logs-empty") {
+                ListStatusContent(
+                    title = stringResource(R.string.no_logs_title),
+                    message = stringResource(R.string.no_logs_message),
+                )
+            }
+        } else {
+            items(entries.asReversed()) { entry ->
+                LogEntryCard(entry)
+            }
+        }
+    }
+}
+
+@Composable
+private fun LogEntryCard(entry: ManagerLogEntry) {
+    val timestamp = remember(entry.timestamp) {
+        DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.MEDIUM)
+            .format(Date(entry.timestamp))
+    }
+    val icon = when (entry.level) {
+        ManagerLogLevel.INFO -> Icons.Rounded.Info
+        ManagerLogLevel.SUCCESS -> Icons.Rounded.CheckCircleOutline
+        ManagerLogLevel.ERROR -> Icons.Rounded.ErrorOutline
+    }
+    val iconColor = when (entry.level) {
+        ManagerLogLevel.INFO -> MiuixTheme.colorScheme.primary
+        ManagerLogLevel.SUCCESS -> if (isSystemInDarkTheme()) {
+            Color(0xFF75D48A)
+        } else {
+            Color(0xFF36A852)
+        }
+        ManagerLogLevel.ERROR -> MiuixTheme.colorScheme.error
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        insideMargin = PaddingValues(16.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+                tint = iconColor,
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = entry.message,
+                    color = MiuixTheme.colorScheme.onSurface,
+                    style = MiuixTheme.textStyles.body1,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = timestamp,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    style = MiuixTheme.textStyles.body2,
+                )
             }
         }
     }
@@ -918,4 +1109,10 @@ private fun Drawable.toImageBitmap(): ImageBitmap {
     draw(Canvas(bitmap))
     bounds = oldBounds
     return bitmap.asImageBitmap()
+}
+
+private fun formatLogEntry(entry: ManagerLogEntry): String {
+    val timestamp = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.MEDIUM)
+        .format(Date(entry.timestamp))
+    return "$timestamp [${entry.level.name}] ${entry.message}"
 }
