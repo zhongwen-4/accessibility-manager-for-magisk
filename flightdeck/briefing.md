@@ -7,9 +7,10 @@
 提交信息格式为 `<gitmoji> [scope] <简短改动说明>`：
 
 - `gitmoji` 必须选自 https://gitmoji.dev/；
-- `scope` 使用 `[core]` 或 `[manager]`；
+- `scope` 使用 `[core]`、`[manager]` 或 `[others]`；
 - Magisk 模块、脚本、构建与项目级文件使用 `[core]`；
 - Android 管理应用的功能与界面使用 `[manager]`；
+- 不属于核心模块或 Android 管理应用的文档、流程与仓库维护使用 `[others]`；
 - 改动说明保持简短、明确。
 
 ## Subscriptions
