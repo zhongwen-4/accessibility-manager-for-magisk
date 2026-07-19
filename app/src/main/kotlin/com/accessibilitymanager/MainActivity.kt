@@ -1161,34 +1161,35 @@ private fun ServiceRow(
             }
 
             if (expanded) {
-                Spacer(Modifier.height(14.dp))
-                Text(
-                    text = stringResource(R.string.service_description),
-                    color = MiuixTheme.colorScheme.onSurface,
-                    style = MiuixTheme.textStyles.body1,
-                    fontWeight = FontWeight.Medium,
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = service.description.ifBlank {
-                        stringResource(R.string.no_service_description)
-                    },
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                    style = MiuixTheme.textStyles.body2,
-                )
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    text = stringResource(R.string.service_component, service.componentName),
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                    style = MiuixTheme.textStyles.body2,
-                )
-                if (service.locked) {
-                    Spacer(Modifier.height(8.dp))
+                Column(modifier = Modifier.padding(10.dp)) {
                     Text(
-                        text = stringResource(R.string.locked_service_description),
-                        color = MiuixTheme.colorScheme.primary,
+                        text = stringResource(R.string.service_description),
+                        color = MiuixTheme.colorScheme.onSurface,
+                        style = MiuixTheme.textStyles.body1,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = service.description.ifBlank {
+                            stringResource(R.string.no_service_description)
+                        },
+                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                         style = MiuixTheme.textStyles.body2,
                     )
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = stringResource(R.string.service_component, service.componentName),
+                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        style = MiuixTheme.textStyles.body2,
+                    )
+                    if (service.locked) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = stringResource(R.string.locked_service_description),
+                            color = MiuixTheme.colorScheme.primary,
+                            style = MiuixTheme.textStyles.body2,
+                        )
+                    }
                 }
             }
         }
