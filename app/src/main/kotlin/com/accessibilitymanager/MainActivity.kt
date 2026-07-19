@@ -14,6 +14,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.StringRes
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -42,11 +43,14 @@ import androidx.compose.material.icons.rounded.Cottage
 import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.LockOpen
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -130,6 +134,7 @@ class MainActivity : ComponentActivity() {
                     controlsEnabled = moduleReady,
                     onRefresh = ::refresh,
                     onToggle = ::toggleService,
+                    onSetLocked = ::setServiceLocked,
                     onAction = ::performStateAction,
                     onCopyLogs = ::copyLogs,
                     onClearLogs = ::clearLogs,
@@ -195,6 +200,10 @@ class MainActivity : ComponentActivity() {
         if (serviceLoadRunning) return
         serviceLoadRunning = true
         val current = homeState
+        val knownLockedServices = current.services
+            .filter { it.locked }
+            .mapTo(mutableSetOf()) { it.componentName }
+        val loadLockedServices = moduleReady
         homeState = if (showFullProgress && current.services.isEmpty()) {
             current.copy(listState = ServiceListState.LOADING, refreshing = false)
         } else {
@@ -203,12 +212,24 @@ class MainActivity : ComponentActivity() {
 
         executor.execute {
             try {
+                val lockedResult = if (loadLockedServices) {
+                    rootServiceManager.getLockedServices()
+                } else {
+                    null
+                }
+                val lockedServices = if (lockedResult?.isSuccessful == true) {
+                    lockedResult.components
+                } else {
+                    knownLockedServices
+                }
                 val services = repository.loadServices().map { service ->
                     ServiceUiModel(
                         label = service.label,
+                        description = service.description,
                         componentName = service.componentName,
                         icon = service.icon,
                         enabled = service.isEnabled,
+                        locked = service.componentName in lockedServices,
                     )
                 }
                 mainHandler.post {
@@ -224,6 +245,13 @@ class MainActivity : ComponentActivity() {
                             R.string.log_services_loaded,
                             services.size,
                         )
+                        if (lockedResult != null && !lockedResult.isSuccessful) {
+                            addLog(
+                                ManagerLogLevel.ERROR,
+                                R.string.log_locks_load_failed,
+                                getString(errorMessage(lockedResult.error)),
+                            )
+                        }
                     }
                 }
             } catch (_: RuntimeException) {
@@ -273,6 +301,44 @@ class MainActivity : ComponentActivity() {
                     addLog(
                         ManagerLogLevel.ERROR,
                         R.string.log_service_toggle_failed,
+                        item.label,
+                        getString(errorMessage(result.error)),
+                    )
+                    Toast.makeText(this, errorMessage(result.error), Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    private fun setServiceLocked(item: ServiceUiModel, locked: Boolean) {
+        if (!moduleReady) {
+            ensureModuleReady()
+            return
+        }
+        updateService(item.componentName) { it.copy(pending = true) }
+        executor.execute {
+            val result = rootServiceManager.setLocked(item.componentName, locked)
+            mainHandler.post {
+                if (destroyed) return@post
+                if (result.isSuccessful) {
+                    updateService(item.componentName) {
+                        it.copy(
+                            enabled = if (locked) true else it.enabled,
+                            locked = locked,
+                            pending = false,
+                        )
+                    }
+                    addLog(
+                        ManagerLogLevel.SUCCESS,
+                        if (locked) R.string.log_service_locked else R.string.log_service_unlocked,
+                        item.label,
+                    )
+                    mainHandler.postDelayed({ loadServices(showFullProgress = false) }, 600)
+                } else {
+                    updateService(item.componentName) { it.copy(pending = false) }
+                    addLog(
+                        ManagerLogLevel.ERROR,
+                        R.string.log_service_lock_failed,
                         item.label,
                         getString(errorMessage(result.error)),
                     )
@@ -436,9 +502,11 @@ private enum class ManagerPage {
 
 private data class ServiceUiModel(
     val label: String,
+    val description: String,
     val componentName: String,
     val icon: Drawable,
     val enabled: Boolean,
+    val locked: Boolean,
     val pending: Boolean = false,
 )
 
@@ -449,6 +517,7 @@ private fun AccessibilityManagerScreen(
     controlsEnabled: Boolean,
     onRefresh: () -> Unit,
     onToggle: (ServiceUiModel, Boolean) -> Unit,
+    onSetLocked: (ServiceUiModel, Boolean) -> Unit,
     onAction: (StateAction) -> Unit,
     onCopyLogs: () -> Unit,
     onClearLogs: () -> Unit,
@@ -542,6 +611,7 @@ private fun AccessibilityManagerScreen(
                 state = state,
                 controlsEnabled = controlsEnabled,
                 onToggle = onToggle,
+                onSetLocked = onSetLocked,
                 onAction = onAction,
                 scrollBehavior = servicesScrollBehavior,
             )
@@ -599,6 +669,7 @@ private fun ServicesPage(
     state: HomeState,
     controlsEnabled: Boolean,
     onToggle: (ServiceUiModel, Boolean) -> Unit,
+    onSetLocked: (ServiceUiModel, Boolean) -> Unit,
     onAction: (StateAction) -> Unit,
     scrollBehavior: ScrollBehavior,
 ) {
@@ -663,6 +734,7 @@ private fun ServicesPage(
                             service = service,
                             controlsEnabled = controlsEnabled,
                             onToggle = onToggle,
+                            onSetLocked = onSetLocked,
                         )
                     }
                 }
@@ -1005,56 +1077,117 @@ private fun ServiceRow(
     service: ServiceUiModel,
     controlsEnabled: Boolean,
     onToggle: (ServiceUiModel, Boolean) -> Unit,
+    onSetLocked: (ServiceUiModel, Boolean) -> Unit,
 ) {
     val bitmap = remember(service.componentName, service.icon) { service.icon.toImageBitmap() }
+    var expanded by rememberSaveable(service.componentName) { mutableStateOf(false) }
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = if (service.pending || !controlsEnabled) {
-            null
-        } else {
-            ({ onToggle(service, !service.enabled) })
-        },
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize(),
+        onClick = { expanded = !expanded },
+        showIndication = true,
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Image(
-                bitmap = bitmap,
-                contentDescription = null,
-                modifier = Modifier.size(44.dp),
-            )
-            Spacer(Modifier.width(14.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = service.label,
-                    color = MiuixTheme.colorScheme.onSurface,
-                    style = MiuixTheme.textStyles.headline1,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = service.componentName,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                    style = MiuixTheme.textStyles.body2,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Spacer(Modifier.width(10.dp))
-            Box(
-                modifier = Modifier.size(width = 58.dp, height = 48.dp),
-                contentAlignment = Alignment.Center,
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (service.pending) {
-                    CircularProgressIndicator(size = 26.dp)
-                } else {
+                Image(
+                    bitmap = bitmap,
+                    contentDescription = null,
+                    modifier = Modifier.size(44.dp),
+                )
+                Spacer(Modifier.width(14.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = service.label,
+                        color = MiuixTheme.colorScheme.onSurface,
+                        style = MiuixTheme.textStyles.headline1,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = stringResource(
+                            if (expanded) R.string.tap_to_collapse else R.string.tap_for_description,
+                        ),
+                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        style = MiuixTheme.textStyles.body2,
+                        maxLines = 1,
+                    )
+                }
+                Box(
+                    modifier = Modifier.size(48.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (service.pending) {
+                        CircularProgressIndicator(size = 24.dp)
+                    } else {
+                        IconButton(
+                            onClick = {
+                                if (controlsEnabled) onSetLocked(service, !service.locked)
+                            },
+                        ) {
+                            Icon(
+                                imageVector = if (service.locked) {
+                                    Icons.Rounded.Lock
+                                } else {
+                                    Icons.Rounded.LockOpen
+                                },
+                                contentDescription = stringResource(
+                                    if (service.locked) R.string.unlock_service else R.string.lock_service,
+                                ),
+                                tint = if (service.locked) {
+                                    MiuixTheme.colorScheme.primary
+                                } else {
+                                    MiuixTheme.colorScheme.onSurfaceVariantSummary
+                                },
+                            )
+                        }
+                    }
+                }
+                Box(
+                    modifier = Modifier.size(width = 58.dp, height = 48.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
                     Switch(
                         checked = service.enabled,
                         onCheckedChange = { onToggle(service, it) },
-                        enabled = controlsEnabled,
+                        enabled = controlsEnabled && !service.pending && !service.locked,
+                    )
+                }
+            }
+
+            if (expanded) {
+                Spacer(Modifier.height(14.dp))
+                Text(
+                    text = stringResource(R.string.service_description),
+                    color = MiuixTheme.colorScheme.onSurface,
+                    style = MiuixTheme.textStyles.body1,
+                    fontWeight = FontWeight.Medium,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = service.description.ifBlank {
+                        stringResource(R.string.no_service_description)
+                    },
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    style = MiuixTheme.textStyles.body2,
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = stringResource(R.string.service_component, service.componentName),
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    style = MiuixTheme.textStyles.body2,
+                )
+                if (service.locked) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(R.string.locked_service_description),
+                        color = MiuixTheme.colorScheme.primary,
+                        style = MiuixTheme.textStyles.body2,
                     )
                 }
             }

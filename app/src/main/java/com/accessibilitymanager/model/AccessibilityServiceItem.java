@@ -6,6 +6,7 @@ import java.util.Objects;
 
 public final class AccessibilityServiceItem {
     private final String label;
+    private final String description;
     private final String componentName;
     private final Drawable icon;
     private boolean enabled;
@@ -13,11 +14,13 @@ public final class AccessibilityServiceItem {
 
     public AccessibilityServiceItem(
             String label,
+            String description,
             String componentName,
             Drawable icon,
             boolean enabled
     ) {
         this.label = label;
+        this.description = description;
         this.componentName = componentName;
         this.icon = icon;
         this.enabled = enabled;
@@ -29,6 +32,10 @@ public final class AccessibilityServiceItem {
 
     public String getComponentName() {
         return componentName;
+    }
+
+    public String getDescription() {
+        return description;
     }
 
     public Drawable getIcon() {
@@ -68,4 +75,3 @@ public final class AccessibilityServiceItem {
         return Objects.hash(componentName);
     }
 }
-

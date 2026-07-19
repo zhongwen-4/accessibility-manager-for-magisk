@@ -11,21 +11,41 @@ public final class ShellCommandBuilderTest {
             + "{ echo __A11YCTL_MISSING__; exit 127; }; ";
 
     @Test
-    public void enableAddsPersistentConfigurationBeforeEnabling() {
+    public void enableOnlyChangesCurrentServiceState() {
         assertEquals(
-                PREFIX + "a11yctl add " + COMPONENT
-                        + " >/dev/null && a11yctl enable " + COMPONENT,
+                PREFIX + "a11yctl enable " + COMPONENT,
                 ShellCommandBuilder.forService(COMPONENT, true)
         );
     }
 
     @Test
-    public void disableRemovesPersistentConfigurationBeforeDisabling() {
+    public void disableOnlyChangesCurrentServiceState() {
         assertEquals(
-                PREFIX + "a11yctl remove " + COMPONENT
-                        + " >/dev/null && a11yctl disable " + COMPONENT,
+                PREFIX + "a11yctl disable " + COMPONENT,
                 ShellCommandBuilder.forService(COMPONENT, false)
         );
+    }
+
+    @Test
+    public void lockPersistsAndImmediatelyEnablesService() {
+        assertEquals(
+                PREFIX + "a11yctl add " + COMPONENT
+                        + " >/dev/null && a11yctl enable " + COMPONENT,
+                ShellCommandBuilder.forLock(COMPONENT, true)
+        );
+    }
+
+    @Test
+    public void unlockOnlyRemovesPersistentConfiguration() {
+        assertEquals(
+                PREFIX + "a11yctl remove " + COMPONENT,
+                ShellCommandBuilder.forLock(COMPONENT, false)
+        );
+    }
+
+    @Test
+    public void configuredServicesCommandIsReadOnly() {
+        assertEquals(PREFIX + "a11yctl configured", ShellCommandBuilder.forLockedServices());
     }
 
     @Test
@@ -36,4 +56,3 @@ public final class ShellCommandBuilderTest {
         );
     }
 }
-

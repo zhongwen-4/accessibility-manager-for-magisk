@@ -60,8 +60,10 @@ public final class AccessibilityServicesRepository {
                 label = component.getPackageName();
             }
             Drawable icon = resolveInfo.loadIcon(packageManager);
+            String description = loadDescription(service);
             result.add(new AccessibilityServiceItem(
                     label,
+                    description,
                     component.flattenToString(),
                     icon,
                     enabledComponents.contains(component)
@@ -79,6 +81,15 @@ public final class AccessibilityServicesRepository {
         return result;
     }
 
+    private String loadDescription(AccessibilityServiceInfo service) {
+        try {
+            String description = service.loadDescription(packageManager);
+            return description == null ? "" : description.trim();
+        } catch (RuntimeException ignored) {
+            return "";
+        }
+    }
+
     private static ComponentName componentOf(AccessibilityServiceInfo service) {
         ResolveInfo resolveInfo = service.getResolveInfo();
         if (resolveInfo == null || resolveInfo.serviceInfo == null) {
@@ -90,4 +101,3 @@ public final class AccessibilityServicesRepository {
         );
     }
 }
-

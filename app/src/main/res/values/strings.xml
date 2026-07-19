@@ -30,6 +30,14 @@
     <string name="load_failed_message">Refresh the list or restart the app.</string>
     <string name="loading_services_title">Loading services</string>
     <string name="loading_services_message">Reading installed accessibility services…</string>
+    <string name="tap_for_description">Tap to view description</string>
+    <string name="tap_to_collapse">Tap to collapse</string>
+    <string name="service_description">Description</string>
+    <string name="no_service_description">This service does not provide a description.</string>
+    <string name="service_component">Component: %1$s</string>
+    <string name="lock_service">Lock and auto-restore service</string>
+    <string name="unlock_service">Unlock service</string>
+    <string name="locked_service_description">Locked: if this service is turned off, the module will automatically restore it.</string>
     <string name="error_module_missing">Accessibility Manager Magisk module is not installed.</string>
     <string name="error_root_unavailable">Root is unavailable on this device.</string>
     <string name="error_root_denied">Root access was denied or the operation failed.</string>
@@ -63,6 +71,10 @@
     <string name="log_service_enabled">Enabled %1$s.</string>
     <string name="log_service_disabled">Disabled %1$s.</string>
     <string name="log_service_toggle_failed">Could not change %1$s: %2$s</string>
+    <string name="log_service_locked">Locked %1$s and enabled automatic restoration.</string>
+    <string name="log_service_unlocked">Unlocked %1$s.</string>
+    <string name="log_service_lock_failed">Could not change the lock for %1$s: %2$s</string>
+    <string name="log_locks_load_failed">Could not read locked services: %1$s</string>
     <string name="log_reboot_requested">Device restart requested.</string>
     <string name="log_reboot_failed">Device restart failed: %1$s</string>
 </resources>

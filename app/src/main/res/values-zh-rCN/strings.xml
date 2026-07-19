@@ -29,6 +29,14 @@
     <string name="load_failed_message">请刷新列表或重新打开应用。</string>
     <string name="loading_services_title">正在加载服务</string>
     <string name="loading_services_message">正在读取已安装的无障碍服务…</string>
+    <string name="tap_for_description">点击查看说明</string>
+    <string name="tap_to_collapse">点击收起说明</string>
+    <string name="service_description">服务说明</string>
+    <string name="no_service_description">该服务没有提供说明。</string>
+    <string name="service_component">组件：%1$s</string>
+    <string name="lock_service">锁定并自动恢复服务</string>
+    <string name="unlock_service">解除服务锁定</string>
+    <string name="locked_service_description">已锁定：检测到该服务关闭后，模块会自动重新开启。</string>
     <string name="error_module_missing">尚未安装 Accessibility Manager Magisk 模块。</string>
     <string name="error_root_unavailable">当前设备无法使用 Root。</string>
     <string name="error_root_denied">Root 授权被拒绝或操作失败。</string>
@@ -62,6 +70,10 @@
     <string name="log_service_enabled">已启用 %1$s。</string>
     <string name="log_service_disabled">已停用 %1$s。</string>
     <string name="log_service_toggle_failed">无法更改 %1$s：%2$s</string>
+    <string name="log_service_locked">已锁定 %1$s，并开启自动恢复。</string>
+    <string name="log_service_unlocked">已解除 %1$s 的锁定。</string>
+    <string name="log_service_lock_failed">无法更改 %1$s 的锁定状态：%2$s</string>
+    <string name="log_locks_load_failed">无法读取已锁定服务：%1$s</string>
     <string name="log_reboot_requested">已请求重启设备。</string>
     <string name="log_reboot_failed">设备重启失败：%1$s</string>
 </resources>

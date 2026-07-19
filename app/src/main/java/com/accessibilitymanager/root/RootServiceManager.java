@@ -6,6 +6,9 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 public final class RootServiceManager {
@@ -20,6 +23,36 @@ public final class RootServiceManager {
             return Result.failure(Error.INVALID_COMPONENT);
         }
 
+        return execute(command);
+    }
+
+    public Result setLocked(String componentName, boolean locked) {
+        final String command;
+        try {
+            command = ShellCommandBuilder.forLock(componentName, locked);
+        } catch (IllegalArgumentException exception) {
+            return Result.failure(Error.INVALID_COMPONENT);
+        }
+        return execute(command);
+    }
+
+    public LockedServicesResult getLockedServices() {
+        Result result = execute(ShellCommandBuilder.forLockedServices());
+        if (!result.isSuccessful()) {
+            return LockedServicesResult.failure(result.getError());
+        }
+
+        Set<String> components = new LinkedHashSet<>();
+        for (String line : result.output.split("\\R")) {
+            String component = line.trim();
+            if (ShellCommandBuilder.isValidComponent(component)) {
+                components.add(component);
+            }
+        }
+        return LockedServicesResult.success(components);
+    }
+
+    private Result execute(String command) {
         Process process = null;
         try {
             process = new ProcessBuilder("su", "-c", command)
@@ -34,7 +67,7 @@ public final class RootServiceManager {
             String output = readOutput(process);
             int exitCode = process.exitValue();
             if (exitCode == 0) {
-                return Result.success();
+                return Result.success(output);
             }
             if (output.contains("__A11YCTL_MISSING__")) {
                 return Result.failure(Error.MODULE_MISSING);
@@ -84,18 +117,20 @@ public final class RootServiceManager {
     public static final class Result {
         private final boolean successful;
         private final Error error;
+        private final String output;
 
-        private Result(boolean successful, Error error) {
+        private Result(boolean successful, Error error, String output) {
             this.successful = successful;
             this.error = error;
+            this.output = output;
         }
 
-        public static Result success() {
-            return new Result(true, Error.NONE);
+        private static Result success(String output) {
+            return new Result(true, Error.NONE, output);
         }
 
         public static Result failure(Error error) {
-            return new Result(false, error);
+            return new Result(false, error, "");
         }
 
         public boolean isSuccessful() {
@@ -104,6 +139,42 @@ public final class RootServiceManager {
 
         public Error getError() {
             return error;
+        }
+    }
+
+    public static final class LockedServicesResult {
+        private final boolean successful;
+        private final Error error;
+        private final Set<String> components;
+
+        private LockedServicesResult(boolean successful, Error error, Set<String> components) {
+            this.successful = successful;
+            this.error = error;
+            this.components = components;
+        }
+
+        private static LockedServicesResult success(Set<String> components) {
+            return new LockedServicesResult(
+                    true,
+                    Error.NONE,
+                    Collections.unmodifiableSet(new LinkedHashSet<>(components))
+            );
+        }
+
+        private static LockedServicesResult failure(Error error) {
+            return new LockedServicesResult(false, error, Collections.emptySet());
+        }
+
+        public boolean isSuccessful() {
+            return successful;
+        }
+
+        public Error getError() {
+            return error;
+        }
+
+        public Set<String> getComponents() {
+            return components;
         }
     }
 }
