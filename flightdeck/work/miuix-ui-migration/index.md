@@ -13,6 +13,7 @@ Run the `构建管理器` workflow once, then install its APK artifact on a root
 - `flightdeck/knowledge/android/automatic-magisk-module-packaging.md`
 - `flightdeck/knowledge/android/miuix-compose-toolchain-compatibility.md`
 - `flightdeck/knowledge/android/manager-operation-log.md`
+- `flightdeck/knowledge/android/locked-accessibility-service-recovery.md`
 
 ## Read if
 
@@ -35,6 +36,9 @@ Verified:
 - Added the GPL-3.0 source revision and adapted-file attribution to `THIRD_PARTY_NOTICES.md`.
 - Added a persistent Miuix log page with severity icons, newest-first records, copy and clear actions, and high-level events for module and accessibility-service operations.
 - Manager version advanced to 2.3.0 (7).
+- Service cards now expand on tap to show the app-provided accessibility description and component name, with localized fallback text when no description is declared.
+- Each service row now has an independent lock control for automatic restoration; locked services cannot be switched off until unlocked.
+- Manager version advanced to 2.4.0 (8); eight unit tests and Android Lint pass.
 
 ## Open questions
 

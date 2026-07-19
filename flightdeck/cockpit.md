@@ -1,6 +1,6 @@
 # Cockpit — Accessibility-Manager
 
-Focus: Validate the Miuix dashboard, operation log, and automatic module installation on a rooted Magisk device.
+Focus: Validate the Miuix dashboard, operation log, automatic module installation, and locked-service recovery on a rooted Magisk device.
 
 ## In flight
 
@@ -9,7 +9,7 @@ Focus: Validate the Miuix dashboard, operation log, and automatic module install
 
 ## Next
 
-- Run the `构建管理器` and `打包模块` workflows once, then install the APK artifact on a rooted Magisk device and validate both active topics end to end.
+- Run the `构建管理器` and `打包模块` workflows once, then install the APK artifact on a rooted Magisk device and validate service-card expansion, locking, and background restoration with the manager closed.
 
 ## Open questions
 

@@ -7,6 +7,6 @@ READ WHEN: before adding manager operations, changing log persistence, or exposi
 
 The manager persists operation logs as structured JSON in private `SharedPreferences`. Keep at most 200 entries with timestamp, severity, and a localized high-level message. Storage order is oldest first; the UI reverses it for newest-first display.
 
-Record app startup, module checks and outcomes, service-list loads, service toggle outcomes, and reboot requests. Never persist raw shell commands, stdout, stderr, Root authorization details, or unrelated device data.
+Record app startup, module checks and outcomes, service-list loads, service toggle and lock outcomes, and reboot requests. Never persist raw shell commands, stdout, stderr, Root authorization details, or unrelated device data.
 
 The Miuix log page provides explicit copy and clear actions. Copying is user initiated and includes formatted timestamps and severity; clearing removes persisted and in-memory entries together.
