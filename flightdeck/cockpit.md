@@ -1,15 +1,15 @@
 # Cockpit — Accessibility-Manager
 
-Focus: Add automatic Magisk module installation to the Android manager.
+Focus: Validate automatic Magisk module installation on a rooted device.
 
 ## In flight
 
-- `automatic-module-install` — bundle and install/update the module from the app.
+- `automatic-module-install` — implementation complete; rooted-device validation remains.
 
 ## Next
 
-- Implement and verify the automatic installation flow.
+- Install `accessibility-manager-auto-install-debug.apk` on a Magisk device and verify install, reboot, and service toggling.
 
 ## Open questions
 
-- None currently; implementation follows the app-driven Magisk installation interpretation.
+- No rooted Android device is currently connected for end-to-end validation.

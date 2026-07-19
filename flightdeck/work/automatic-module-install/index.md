@@ -2,21 +2,33 @@
 
 ## State
 
-Active. The Android manager currently requires the Magisk module to be installed separately.
+Implementation complete. Awaiting validation on a rooted device running Magisk.
 
 ## Next
 
-Bundle the module in the APK, install or update it through Magisk on app startup, and verify the resulting APK.
+Install the generated APK on a rooted Magisk device; verify automatic installation, reboot, and service toggling.
 
 ## Read now
+
+- `flightdeck/knowledge/android/automatic-magisk-module-packaging.md`
 
 ## Read if
 
 ## Progress
 
-Current:
-- Define and implement the automatic installation flow.
+Done:
+- Generate the bundled module ZIP from canonical module files during Android builds.
+- Detect installed, pending, mounted, outdated, and disabled module states.
+- Automatically install or update through `magisk --install-module` after Root authorization.
+- Show retry, disabled-module, failure, and reboot-required UI states.
+
+Verified:
+- Five unit tests pass.
+- Android Lint reports no issues.
+- APK signature verifies.
+- Bundled module archive is valid and byte-identical to the APK asset.
+- Existing `a11yctl` regression tests pass.
 
 ## Open questions
 
-- Assumption: "automatic install" means the Android app automatically installs its bundled Magisk module when missing or outdated.
+- Rooted-device behavior remains unverified because no Android device is connected.

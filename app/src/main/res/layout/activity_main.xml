@@ -47,11 +47,21 @@
             android:visibility="gone">
 
             <ImageView
+                android:id="@+id/state_icon"
                 android:layout_width="64dp"
                 android:layout_height="64dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_accessibility_empty"
                 app:tint="?attr/colorOnSurfaceVariant" />
+
+            <com.google.android.material.progressindicator.CircularProgressIndicator
+                android:id="@+id/state_progress_indicator"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:indeterminate="true"
+                android:visibility="gone"
+                app:indicatorSize="40dp"
+                app:trackThickness="3dp" />
 
             <TextView
                 android:id="@+id/empty_title"
@@ -71,6 +81,17 @@
                 android:gravity="center"
                 android:maxWidth="320dp"
                 android:textColor="?attr/colorOnSurfaceVariant" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/state_action"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:layout_marginTop="20dp"
+                android:minWidth="120dp"
+                android:visibility="gone"
+                app:icon="@drawable/ic_refresh"
+                app:iconGravity="textStart" />
         </LinearLayout>
     </FrameLayout>
 </LinearLayout>

@@ -17,4 +17,21 @@
     <string name="error_command_timeout">The root operation timed out.</string>
     <string name="error_invalid_component">This service has an invalid component name.</string>
     <string name="error_operation_interrupted">The operation was interrupted.</string>
+    <string name="module_installing_title">Installing manager component</string>
+    <string name="module_installing_message">Keep the root authorization dialog open.</string>
+    <string name="module_ready_title">Installation complete</string>
+    <string name="module_ready_message">Restart the device to activate the manager component.</string>
+    <string name="module_disabled_title">Module is disabled</string>
+    <string name="module_disabled_message">Enable the Accessibility Manager module in Magisk, then restart.</string>
+    <string name="module_install_failed_title">Automatic installation failed</string>
+    <string name="module_root_unavailable">Root is unavailable on this device.</string>
+    <string name="module_root_denied">Root access was denied or module detection failed.</string>
+    <string name="module_magisk_missing">Magisk was not found. Automatic installation requires Magisk.</string>
+    <string name="module_asset_error">The bundled module could not be prepared.</string>
+    <string name="module_install_error">Magisk could not install the bundled module.</string>
+    <string name="module_install_timeout">The module operation timed out.</string>
+    <string name="retry">Retry</string>
+    <string name="reboot_now">Restart now</string>
+    <string name="rebooting_title">Restarting device</string>
+    <string name="rebooting_message">Waiting for the system to restart…</string>
 </resources>

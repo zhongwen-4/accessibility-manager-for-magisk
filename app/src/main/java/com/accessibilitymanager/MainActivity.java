@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import com.accessibilitymanager.data.AccessibilityServicesRepository;
 import com.accessibilitymanager.databinding.ActivityMainBinding;
 import com.accessibilitymanager.model.AccessibilityServiceItem;
+import com.accessibilitymanager.root.MagiskModuleInstaller;
 import com.accessibilitymanager.root.RootServiceManager;
 import com.accessibilitymanager.ui.AccessibilityServicesAdapter;
 import com.google.android.material.snackbar.Snackbar;
@@ -32,8 +33,12 @@ public final class MainActivity extends AppCompatActivity {
     private ActivityMainBinding binding;
     private AccessibilityServicesRepository repository;
     private AccessibilityServicesAdapter adapter;
+    private MagiskModuleInstaller moduleInstaller;
     private boolean loading;
+    private boolean moduleOperationRunning;
+    private boolean moduleReady;
     private boolean destroyed;
+    private StateAction stateAction = StateAction.NONE;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,6 +48,7 @@ public final class MainActivity extends AppCompatActivity {
 
         setSupportActionBar(binding.toolbar);
         repository = new AccessibilityServicesRepository(getApplicationContext());
+        moduleInstaller = new MagiskModuleInstaller(getApplicationContext());
         adapter = new AccessibilityServicesAdapter(this::toggleService);
 
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
@@ -52,8 +58,9 @@ public final class MainActivity extends AppCompatActivity {
                 this,
                 layoutManager.getOrientation()
         ));
+        binding.stateAction.setOnClickListener(view -> performStateAction());
 
-        loadServices(true);
+        ensureModuleReady();
     }
 
     @Override
@@ -65,10 +72,88 @@ public final class MainActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (item.getItemId() == R.id.action_refresh) {
-            loadServices(false);
+            if (moduleReady) {
+                loadServices(false);
+            } else {
+                ensureModuleReady();
+            }
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void ensureModuleReady() {
+        if (moduleOperationRunning) {
+            return;
+        }
+        moduleOperationRunning = true;
+        moduleReady = false;
+        showModuleProgress();
+
+        executor.execute(() -> {
+            MagiskModuleInstaller.Result result = moduleInstaller.ensureInstalled(
+                    BuildConfig.BUNDLED_MODULE_VERSION_CODE
+            );
+            mainHandler.post(() -> {
+                if (destroyed) {
+                    return;
+                }
+                moduleOperationRunning = false;
+                if (result.isSuccessful()
+                        && result.getState() == MagiskModuleInstaller.State.READY) {
+                    moduleReady = true;
+                    loadServices(true);
+                } else if (result.isSuccessful()
+                        && result.getState() == MagiskModuleInstaller.State.REBOOT_REQUIRED) {
+                    showRebootRequired();
+                } else {
+                    showModuleFailure(result.getState());
+                }
+            });
+        });
+    }
+
+    private void performStateAction() {
+        switch (stateAction) {
+            case RETRY_MODULE:
+                ensureModuleReady();
+                break;
+            case RETRY_LIST:
+                loadServices(true);
+                break;
+            case REBOOT:
+                requestReboot();
+                break;
+            case NONE:
+            default:
+                break;
+        }
+    }
+
+    private void requestReboot() {
+        if (moduleOperationRunning) {
+            return;
+        }
+        moduleOperationRunning = true;
+        showState(
+                true,
+                R.string.rebooting_title,
+                R.string.rebooting_message,
+                StateAction.NONE,
+                0
+        );
+        executor.execute(() -> {
+            MagiskModuleInstaller.Result result = moduleInstaller.reboot();
+            mainHandler.post(() -> {
+                if (destroyed) {
+                    return;
+                }
+                moduleOperationRunning = false;
+                if (!result.isSuccessful()) {
+                    showModuleFailure(result.getState());
+                }
+            });
+        });
     }
 
     private void loadServices(boolean showFullProgress) {
@@ -131,9 +216,87 @@ public final class MainActivity extends AppCompatActivity {
         binding.emptyState.setVisibility(View.GONE);
     }
 
+    private void showModuleProgress() {
+        showState(
+                true,
+                R.string.module_installing_title,
+                R.string.module_installing_message,
+                StateAction.NONE,
+                0
+        );
+        binding.toolbar.setSubtitle(null);
+    }
+
+    private void showRebootRequired() {
+        showState(
+                false,
+                R.string.module_ready_title,
+                R.string.module_ready_message,
+                StateAction.REBOOT,
+                R.string.reboot_now
+        );
+        binding.toolbar.setSubtitle(null);
+    }
+
+    private void showModuleFailure(MagiskModuleInstaller.State state) {
+        int title = R.string.module_install_failed_title;
+        int message;
+        switch (state) {
+            case MODULE_DISABLED:
+                title = R.string.module_disabled_title;
+                message = R.string.module_disabled_message;
+                break;
+            case ROOT_UNAVAILABLE:
+                message = R.string.module_root_unavailable;
+                break;
+            case MAGISK_MISSING:
+                message = R.string.module_magisk_missing;
+                break;
+            case ASSET_ERROR:
+                message = R.string.module_asset_error;
+                break;
+            case INSTALL_FAILED:
+                message = R.string.module_install_error;
+                break;
+            case TIMEOUT:
+                message = R.string.module_install_timeout;
+                break;
+            case ROOT_DENIED_OR_COMMAND_FAILED:
+            default:
+                message = R.string.module_root_denied;
+                break;
+        }
+        showState(false, title, message, StateAction.RETRY_MODULE, R.string.retry);
+        binding.toolbar.setSubtitle(null);
+    }
+
+    private void showState(
+            boolean progress,
+            int title,
+            int message,
+            StateAction action,
+            int actionText
+    ) {
+        loading = false;
+        stateAction = action;
+        binding.loadingIndicator.setVisibility(View.GONE);
+        binding.servicesList.setVisibility(View.GONE);
+        binding.emptyState.setVisibility(View.VISIBLE);
+        binding.stateIcon.setVisibility(progress ? View.GONE : View.VISIBLE);
+        binding.stateProgressIndicator.setVisibility(progress ? View.VISIBLE : View.GONE);
+        binding.emptyTitle.setText(title);
+        binding.emptyMessage.setText(message);
+        binding.stateAction.setVisibility(action == StateAction.NONE ? View.GONE : View.VISIBLE);
+        if (actionText != 0) {
+            binding.stateAction.setText(actionText);
+        }
+    }
+
     private void showServices(List<AccessibilityServiceItem> services) {
         loading = false;
         binding.loadingIndicator.setVisibility(View.GONE);
+        binding.stateProgressIndicator.setVisibility(View.GONE);
+        binding.stateAction.setVisibility(View.GONE);
         adapter.submitList(new ArrayList<>(services));
 
         int enabledCount = 0;
@@ -152,8 +315,10 @@ public final class MainActivity extends AppCompatActivity {
         boolean empty = services.isEmpty();
         binding.servicesList.setVisibility(empty ? View.GONE : View.VISIBLE);
         binding.emptyState.setVisibility(empty ? View.VISIBLE : View.GONE);
+        binding.stateIcon.setVisibility(View.VISIBLE);
         binding.emptyTitle.setText(R.string.no_services_title);
         binding.emptyMessage.setText(R.string.no_services_message);
+        stateAction = StateAction.NONE;
     }
 
     private void showLoadError() {
@@ -161,8 +326,13 @@ public final class MainActivity extends AppCompatActivity {
         binding.loadingIndicator.setVisibility(View.GONE);
         binding.servicesList.setVisibility(View.GONE);
         binding.emptyState.setVisibility(View.VISIBLE);
+        binding.stateIcon.setVisibility(View.VISIBLE);
+        binding.stateProgressIndicator.setVisibility(View.GONE);
         binding.emptyTitle.setText(R.string.load_failed_title);
         binding.emptyMessage.setText(R.string.load_failed_message);
+        binding.stateAction.setVisibility(View.VISIBLE);
+        binding.stateAction.setText(R.string.retry);
+        stateAction = StateAction.RETRY_LIST;
         binding.toolbar.setSubtitle(null);
     }
 
@@ -190,5 +360,12 @@ public final class MainActivity extends AppCompatActivity {
         mainHandler.removeCallbacksAndMessages(null);
         executor.shutdownNow();
         super.onDestroy();
+    }
+
+    private enum StateAction {
+        NONE,
+        RETRY_MODULE,
+        RETRY_LIST,
+        REBOOT
     }
 }
