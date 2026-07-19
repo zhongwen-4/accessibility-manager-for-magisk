@@ -34,8 +34,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Article
 import androidx.compose.material.icons.rounded.AccessibilityNew
-import androidx.compose.material.icons.rounded.Article
 import androidx.compose.material.icons.rounded.CheckCircleOutline
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Cottage
@@ -521,7 +521,7 @@ private fun AccessibilityManagerScreen(
                     modifier = Modifier.weight(1f),
                     selected = selectedPage == ManagerPage.LOGS,
                     onClick = { selectedPage = ManagerPage.LOGS },
-                    icon = Icons.Rounded.Article,
+                    icon = Icons.AutoMirrored.Rounded.Article,
                     label = stringResource(R.string.logs),
                 )
             }
