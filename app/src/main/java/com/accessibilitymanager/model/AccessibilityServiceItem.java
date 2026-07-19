@@ -1,0 +1,71 @@
+package com.accessibilitymanager.model;
+
+import android.graphics.drawable.Drawable;
+
+import java.util.Objects;
+
+public final class AccessibilityServiceItem {
+    private final String label;
+    private final String componentName;
+    private final Drawable icon;
+    private boolean enabled;
+    private boolean pending;
+
+    public AccessibilityServiceItem(
+            String label,
+            String componentName,
+            Drawable icon,
+            boolean enabled
+    ) {
+        this.label = label;
+        this.componentName = componentName;
+        this.icon = icon;
+        this.enabled = enabled;
+    }
+
+    public String getLabel() {
+        return label;
+    }
+
+    public String getComponentName() {
+        return componentName;
+    }
+
+    public Drawable getIcon() {
+        return icon;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public boolean isPending() {
+        return pending;
+    }
+
+    public void setPending(boolean pending) {
+        this.pending = pending;
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
+        if (!(other instanceof AccessibilityServiceItem)) {
+            return false;
+        }
+        AccessibilityServiceItem that = (AccessibilityServiceItem) other;
+        return componentName.equals(that.componentName);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(componentName);
+    }
+}
+

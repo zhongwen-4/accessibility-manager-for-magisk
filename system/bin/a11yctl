@@ -1,0 +1,361 @@
+#!/system/bin/sh
+
+CONFIG_DIR=${A11Y_MANAGER_CONFIG_DIR:-/data/adb/accessibility-manager}
+CONFIG_FILE="$CONFIG_DIR/config.conf"
+SERVICES_FILE="$CONFIG_DIR/services.list"
+LOCK_DIR="$CONFIG_DIR/.lock"
+
+say_error() {
+  printf 'a11yctl: %s\n' "$*" >&2
+}
+
+config_value() {
+  key=$1
+  fallback=$2
+  value=
+  if [ -r "$CONFIG_FILE" ]; then
+    value=$(sed -n "s/^[[:space:]]*$key[[:space:]]*=[[:space:]]*//p" "$CONFIG_FILE" | tail -n 1 | tr -d '\r' | sed 's/[[:space:]]*$//')
+  fi
+  [ -n "$value" ] && printf '%s\n' "$value" || printf '%s\n' "$fallback"
+}
+
+current_user() {
+  configured=$(config_value USER_ID auto)
+  case "$configured" in
+    ''|auto)
+      user=$(cmd activity get-current-user 2>/dev/null | tr -cd '0-9')
+      [ -z "$user" ] && user=$(am get-current-user 2>/dev/null | tr -cd '0-9')
+      [ -n "$user" ] && printf '%s\n' "$user" || printf '0\n'
+      ;;
+    *[!0-9]*)
+      say_error "$CONFIG_FILE 中的 USER_ID 无效：$configured"
+      return 1
+      ;;
+    *) printf '%s\n' "$configured" ;;
+  esac
+}
+
+validate_component() {
+  component=$1
+  case "$component" in
+    ''|*[!A-Za-z0-9._$/]*|/*|*/|*/*/*)
+      say_error "无效的服务组件名：$component"
+      return 1
+      ;;
+    */*) return 0 ;;
+    *)
+      say_error "组件名必须使用 包名/服务名 格式：$component"
+      return 1
+      ;;
+  esac
+}
+
+enabled_value() {
+  user=$1
+  value=$(settings --user "$user" get secure enabled_accessibility_services 2>/dev/null) || return 1
+  [ "$value" = "null" ] && value=
+  printf '%s\n' "$value"
+}
+
+contains_component() {
+  list=$1
+  target=$2
+  old_ifs=$IFS
+  IFS=:
+  for item in $list; do
+    if [ "$item" = "$target" ]; then
+      IFS=$old_ifs
+      return 0
+    fi
+  done
+  IFS=$old_ifs
+  return 1
+}
+
+append_component() {
+  list=$1
+  component=$2
+  if [ -z "$list" ]; then
+    printf '%s\n' "$component"
+  elif contains_component "$list" "$component"; then
+    printf '%s\n' "$list"
+  else
+    printf '%s:%s\n' "$list" "$component"
+  fi
+}
+
+remove_component() {
+  list=$1
+  target=$2
+  result=
+  old_ifs=$IFS
+  IFS=:
+  for item in $list; do
+    [ -z "$item" ] && continue
+    [ "$item" = "$target" ] && continue
+    if [ -z "$result" ]; then
+      result=$item
+    else
+      result="$result:$item"
+    fi
+  done
+  IFS=$old_ifs
+  printf '%s\n' "$result"
+}
+
+print_colon_list() {
+  list=$1
+  [ -z "$list" ] && return 0
+  printf '%s\n' "$list" | tr ':' '\n'
+}
+
+configured_components() {
+  [ -r "$SERVICES_FILE" ] || return 0
+  while IFS= read -r line || [ -n "$line" ]; do
+    line=$(printf '%s' "$line" | tr -d '\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+    case "$line" in ''|'#'*) continue ;; esac
+    validate_component "$line" || return 1
+    printf '%s\n' "$line"
+  done < "$SERVICES_FILE"
+}
+
+acquire_lock() {
+  mkdir -p "$CONFIG_DIR" || return 1
+  attempts=0
+  while ! mkdir "$LOCK_DIR" 2>/dev/null; do
+    owner=
+    [ -r "$LOCK_DIR/pid" ] && owner=$(cat "$LOCK_DIR/pid" 2>/dev/null)
+    case "$owner" in
+      ''|*[!0-9]*) stale=1 ;;
+      *)
+        if kill -0 "$owner" 2>/dev/null; then
+          stale=0
+        else
+          stale=1
+        fi
+        ;;
+    esac
+    if [ "$stale" -eq 1 ]; then
+      rm -f "$LOCK_DIR/pid"
+      rmdir "$LOCK_DIR" 2>/dev/null
+      continue
+    fi
+    attempts=$((attempts + 1))
+    if [ "$attempts" -ge 50 ]; then
+      say_error "另一个操作仍在运行"
+      return 1
+    fi
+    sleep 0.1
+  done
+  printf '%s\n' "$$" > "$LOCK_DIR/pid"
+  trap 'rm -f "$LOCK_DIR/pid"; rmdir "$LOCK_DIR" 2>/dev/null' EXIT HUP INT TERM
+}
+
+write_enabled_value() {
+  user=$1
+  value=$2
+  settings --user "$user" put secure enabled_accessibility_services "$value" || return 1
+  if [ -n "$value" ]; then
+    settings --user "$user" put secure accessibility_enabled 1 || return 1
+  else
+    settings --user "$user" put secure accessibility_enabled 0 || return 1
+  fi
+}
+
+enable_service() {
+  component=$1
+  validate_component "$component" || return 1
+  user=$(current_user) || return 1
+  acquire_lock || return 1
+  current=$(enabled_value "$user") || {
+    say_error "无法读取 Android 用户 $user 的安全设置"
+    return 1
+  }
+  next=$(append_component "$current" "$component")
+  write_enabled_value "$user" "$next" || return 1
+  printf '已为用户 %s 启用：%s\n' "$user" "$component"
+}
+
+disable_service() {
+  component=$1
+  validate_component "$component" || return 1
+  user=$(current_user) || return 1
+  acquire_lock || return 1
+  current=$(enabled_value "$user") || {
+    say_error "无法读取 Android 用户 $user 的安全设置"
+    return 1
+  }
+  next=$(remove_component "$current" "$component")
+  write_enabled_value "$user" "$next" || return 1
+  printf '已为用户 %s 停用：%s\n' "$user" "$component"
+}
+
+add_managed() {
+  component=$1
+  validate_component "$component" || return 1
+  acquire_lock || return 1
+  touch "$SERVICES_FILE" || return 1
+  if grep -Fqx "$component" "$SERVICES_FILE" 2>/dev/null; then
+    printf '已在持久配置中：%s\n' "$component"
+    return 0
+  fi
+  printf '%s\n' "$component" >> "$SERVICES_FILE" || return 1
+  chmod 0644 "$SERVICES_FILE"
+  printf '已添加到持久配置：%s\n' "$component"
+}
+
+remove_managed() {
+  component=$1
+  validate_component "$component" || return 1
+  acquire_lock || return 1
+  [ -f "$SERVICES_FILE" ] || {
+    printf '不在持久配置中：%s\n' "$component"
+    return 0
+  }
+  temp="$SERVICES_FILE.tmp.$$"
+  awk -v target="$component" '$0 != target { print }' "$SERVICES_FILE" > "$temp" || return 1
+  mv -f "$temp" "$SERVICES_FILE" || return 1
+  chmod 0644 "$SERVICES_FILE"
+  printf '已从持久配置移除：%s\n' "$component"
+}
+
+apply_configuration() {
+  quiet=0
+  [ "$1" = "--quiet" ] && quiet=1
+  user=$(current_user) || return 1
+  mode=$(config_value MODE ensure)
+  case "$mode" in ensure|exact) ;; *)
+    say_error "MODE 必须是 ensure 或 exact，当前值：$mode"
+    return 1
+    ;;
+  esac
+
+  desired=$(configured_components) || return 1
+  if [ "$mode" = "exact" ] && [ -z "$desired" ] && [ "$(config_value ALLOW_EMPTY_EXACT 0)" != "1" ]; then
+    say_error "为避免关闭全部服务，已拒绝空列表的 exact 模式；如需允许，请设置 ALLOW_EMPTY_EXACT=1"
+    return 1
+  fi
+
+  acquire_lock || return 1
+  current=$(enabled_value "$user") || {
+    say_error "无法读取 Android 用户 $user 的安全设置"
+    return 1
+  }
+
+  if [ "$mode" = "exact" ]; then
+    next=
+  else
+    next=$current
+  fi
+  while IFS= read -r component; do
+    [ -z "$component" ] && continue
+    next=$(append_component "$next" "$component")
+  done <<EOF
+$desired
+EOF
+
+  if [ "$next" != "$current" ]; then
+    write_enabled_value "$user" "$next" || return 1
+    [ "$quiet" -eq 0 ] && printf '已为用户 %s 应用 %s 模式配置。\n' "$user" "$mode"
+  else
+    if [ -n "$next" ]; then
+      settings --user "$user" put secure accessibility_enabled 1 >/dev/null || return 1
+    fi
+    [ "$quiet" -eq 0 ] && printf '用户 %s 的配置已经生效。\n' "$user"
+  fi
+}
+
+capture_enabled() {
+  user=$(current_user) || return 1
+  acquire_lock || return 1
+  current=$(enabled_value "$user") || return 1
+  temp="$SERVICES_FILE.tmp.$$"
+  print_colon_list "$current" > "$temp" || return 1
+  mv -f "$temp" "$SERVICES_FILE" || return 1
+  chmod 0644 "$SERVICES_FILE"
+  printf '已捕获用户 %s 当前启用的服务。\n' "$user"
+}
+
+show_status() {
+  component=$1
+  validate_component "$component" || return 1
+  user=$(current_user) || return 1
+  current=$(enabled_value "$user") || return 1
+  if contains_component "$current" "$component"; then
+    enabled=是
+  else
+    enabled=否
+  fi
+  if configured_components | grep -Fqx "$component"; then
+    managed=是
+  else
+    managed=否
+  fi
+  printf '组件=%s\n用户=%s\n已启用=%s\n已配置=%s\n' "$component" "$user" "$enabled" "$managed"
+}
+
+show_help() {
+  cat <<'EOF'
+用法：a11yctl 命令 [参数]
+
+命令：
+  enabled                 列出当前已启用的无障碍服务。
+  configured              列出由本模块管理的服务。
+  status COMPONENT        显示一个服务的启用和配置状态。
+  enable COMPONENT        立即启用服务，但不修改持久配置。
+  disable COMPONENT       立即停用服务，但不修改持久配置。
+  add COMPONENT           将服务添加到持久配置。
+  remove COMPONENT        从持久配置移除服务，但不立即停用。
+  apply [--quiet]          立即应用持久配置。
+  capture                 用当前已启用的服务覆盖持久配置。
+  user                    显示当前管理的 Android 用户 ID。
+  help                    显示此帮助。
+
+持久配置文件：
+  /data/adb/accessibility-manager/config.conf
+  /data/adb/accessibility-manager/services.list
+EOF
+}
+
+command_name=${1:-help}
+case "$command_name" in
+  enabled)
+    user=$(current_user) || exit 1
+    current=$(enabled_value "$user") || exit 1
+    print_colon_list "$current"
+    ;;
+  configured) configured_components ;;
+  status)
+    [ "$#" -eq 2 ] || { say_error "status 命令需要 COMPONENT 参数"; exit 2; }
+    show_status "$2"
+    ;;
+  enable)
+    [ "$#" -eq 2 ] || { say_error "enable 命令需要 COMPONENT 参数"; exit 2; }
+    enable_service "$2"
+    ;;
+  disable)
+    [ "$#" -eq 2 ] || { say_error "disable 命令需要 COMPONENT 参数"; exit 2; }
+    disable_service "$2"
+    ;;
+  add)
+    [ "$#" -eq 2 ] || { say_error "add 命令需要 COMPONENT 参数"; exit 2; }
+    add_managed "$2"
+    ;;
+  remove)
+    [ "$#" -eq 2 ] || { say_error "remove 命令需要 COMPONENT 参数"; exit 2; }
+    remove_managed "$2"
+    ;;
+  apply)
+    [ "$#" -le 2 ] || { say_error "apply 仅接受 --quiet 选项"; exit 2; }
+    [ "$#" -eq 1 ] || [ "$2" = "--quiet" ] || { say_error "未知的 apply 选项：$2"; exit 2; }
+    apply_configuration "${2:-}"
+    ;;
+  capture) capture_enabled ;;
+  user) current_user ;;
+  help|-h|--help) show_help ;;
+  *)
+    say_error "未知命令：$command_name"
+    show_help >&2
+    exit 2
+    ;;
+esac
