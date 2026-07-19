@@ -1,0 +1,107 @@
+name: 打包模块
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/build-module.yml"
+      - ".gitattributes"
+      - "build.ps1"
+      - "module.prop"
+      - "*.sh"
+      - "config.conf.example"
+      - "services.list.example"
+      - "META-INF/**"
+      - "system/**"
+      - "tests/**"
+  pull_request:
+    paths:
+      - ".github/workflows/build-module.yml"
+      - ".gitattributes"
+      - "build.ps1"
+      - "module.prop"
+      - "*.sh"
+      - "config.conf.example"
+      - "services.list.example"
+      - "META-INF/**"
+      - "system/**"
+      - "tests/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: module-build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package-module:
+    name: 测试并打包 Magisk 模块
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+
+      - name: 设置测试脚本执行权限
+        run: chmod +x tests/test-a11yctl.sh
+
+      - name: 运行模块回归测试
+        run: ./tests/test-a11yctl.sh
+
+      - name: 打包模块
+        shell: pwsh
+        run: ./build.ps1
+
+      - name: 校验模块 ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+
+          archives=(dist/magisk-accessibility-manager-*.zip)
+          if [[ ${#archives[@]} -ne 1 ]]; then
+            echo "Expected one module ZIP, found ${#archives[@]}" >&2
+            exit 1
+          fi
+          archive="${archives[0]}"
+
+          unzip -t "$archive"
+          unzip -Z1 "$archive" | sort > "$RUNNER_TEMP/actual-files.txt"
+          sort > "$RUNNER_TEMP/expected-files.txt" <<'EOF'
+          META-INF/com/google/android/update-binary
+          META-INF/com/google/android/updater-script
+          action.sh
+          config.conf.example
+          customize.sh
+          module.prop
+          service.sh
+          services.list.example
+          system/bin/a11yctl
+          uninstall.sh
+          EOF
+          diff -u "$RUNNER_TEMP/expected-files.txt" "$RUNNER_TEMP/actual-files.txt"
+
+          while IFS= read -r entry; do
+            unzip -p "$archive" "$entry" > "$RUNNER_TEMP/module-entry.txt"
+            if grep -q $'\r' "$RUNNER_TEMP/module-entry.txt"; then
+              echo "CRLF line ending found in $entry" >&2
+              exit 1
+            fi
+          done < "$RUNNER_TEMP/expected-files.txt"
+
+          cp "$archive" "$RUNNER_TEMP/first-build.zip"
+          pwsh -File ./build.ps1
+          cmp "$archive" "$RUNNER_TEMP/first-build.zip"
+          sha256sum "$archive"
+
+      - name: 上传模块 ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: accessibility-manager-module-${{ github.run_number }}
+          path: dist/magisk-accessibility-manager-*.zip
+          if-no-files-found: error
+          retention-days: 14

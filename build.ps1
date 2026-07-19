@@ -4,6 +4,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$archiveTimestamp = [DateTimeOffset]::new(1980, 1, 1, 0, 0, 0, [TimeSpan]::Zero)
 
 $requiredFiles = @(
     'module.prop',
@@ -52,6 +53,7 @@ try {
             $entryName,
             [System.IO.Compression.CompressionLevel]::Optimal
         )
+        $entry.LastWriteTime = $archiveTimestamp
         $sourceStream = [System.IO.File]::OpenRead($sourcePath)
         $entryStream = $entry.Open()
         try {

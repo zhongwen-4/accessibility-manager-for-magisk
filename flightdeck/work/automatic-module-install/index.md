@@ -6,7 +6,7 @@ Implementation complete. Awaiting validation on a rooted device running Magisk.
 
 ## Next
 
-Run the `构建管理器` workflow once, then install its APK artifact on a rooted Magisk device; verify automatic installation, reboot, and service toggling.
+Run the `构建管理器` and `打包模块` workflows once, then install the APK artifact on a rooted Magisk device; verify automatic installation, reboot, and service toggling.
 
 ## Read now
 
@@ -30,6 +30,7 @@ Verified:
 - Existing `a11yctl` regression tests pass.
 - The `构建管理器` workflow now runs the automated checks and verifies the embedded module before uploading the APK.
 - Module setup states now appear inside the Miuix homepage instead of replacing the service list; controls remain disabled until the module is ready.
+- The `打包模块` workflow now regression-tests, reproducibly packages, validates, and uploads the standalone Magisk ZIP.
 
 ## Open questions
 

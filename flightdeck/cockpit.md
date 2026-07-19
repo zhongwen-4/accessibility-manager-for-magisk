@@ -9,7 +9,7 @@ Focus: Validate the SukiSU-style Miuix dashboard and automatic module installati
 
 ## Next
 
-- Run the `构建管理器` workflow once, then install its APK artifact on a rooted Magisk device and validate both active topics end to end.
+- Run the `构建管理器` and `打包模块` workflows once, then install the APK artifact on a rooted Magisk device and validate both active topics end to end.
 
 ## Open questions
 

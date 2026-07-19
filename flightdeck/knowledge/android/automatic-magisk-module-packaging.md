@@ -21,3 +21,5 @@ Before delivery, verify all of the following:
 - a rooted Magisk device completes install, reboot, and `a11yctl` detection.
 
 The `构建管理器` GitHub Actions workflow automates the archive, embedded-asset hash, unit test, shell regression, Lint, APK signature, and artifact checks on every main-branch push and pull request. A rooted device remains required for the final installation and behavior check.
+
+The separate `打包模块` workflow runs for module-related changes. It uses `build.ps1` as the canonical standalone packager, rejects missing or extra ZIP entries and CRLF shell files, rebuilds twice to prove reproducibility, and uploads the versioned Magisk ZIP.
