@@ -2,6 +2,7 @@ package com.accessibilitymanager
 
 import android.graphics.Canvas
 import android.graphics.drawable.Drawable
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -27,6 +29,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AccessibilityNew
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -36,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -47,14 +53,16 @@ import com.accessibilitymanager.data.AccessibilityServicesRepository
 import com.accessibilitymanager.root.MagiskModuleInstaller
 import com.accessibilitymanager.root.RootServiceManager
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
+import top.yukonga.miuix.kmp.basic.FloatingNavigationBar
+import top.yukonga.miuix.kmp.basic.FloatingNavigationBarItem
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.Switch
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.darkColorScheme
 import top.yukonga.miuix.kmp.theme.lightColorScheme
@@ -335,6 +343,11 @@ private enum class StateAction {
     REBOOT,
 }
 
+private enum class ManagerPage {
+    HOME,
+    SERVICES,
+}
+
 private data class ServiceUiModel(
     val label: String,
     val componentName: String,
@@ -351,40 +364,98 @@ private fun AccessibilityManagerScreen(
     onToggle: (ServiceUiModel, Boolean) -> Unit,
     onAction: (StateAction) -> Unit,
 ) {
+    var selectedPage by remember { mutableStateOf(ManagerPage.HOME) }
+
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = stringResource(R.string.app_name),
-                actions = {
-                    if (state.refreshing) {
-                        CircularProgressIndicator(size = 24.dp)
-                    } else {
-                        IconButton(onClick = onRefresh) {
-                            Icon(
-                                imageVector = Icons.Rounded.Refresh,
-                                contentDescription = stringResource(R.string.refresh),
-                            )
-                        }
-                    }
-                },
-            )
+        bottomBar = {
+            FloatingNavigationBar {
+                FloatingNavigationBarItem(
+                    selected = selectedPage == ManagerPage.HOME,
+                    onClick = { selectedPage = ManagerPage.HOME },
+                    icon = Icons.Rounded.Home,
+                    label = stringResource(R.string.home),
+                )
+                FloatingNavigationBarItem(
+                    selected = selectedPage == ManagerPage.SERVICES,
+                    onClick = { selectedPage = ManagerPage.SERVICES },
+                    icon = Icons.Rounded.AccessibilityNew,
+                    label = stringResource(R.string.services),
+                )
+            }
         },
     ) { innerPadding ->
-        HomeContent(
-            innerPadding = innerPadding,
-            state = state,
-            controlsEnabled = controlsEnabled,
-            onToggle = onToggle,
-            onAction = onAction,
-        )
+        when (selectedPage) {
+            ManagerPage.HOME -> DashboardPage(
+                innerPadding = innerPadding,
+                state = state,
+                controlsEnabled = controlsEnabled,
+                onRefresh = onRefresh,
+                onOpenServices = { selectedPage = ManagerPage.SERVICES },
+                onAction = onAction,
+            )
+
+            ManagerPage.SERVICES -> ServicesPage(
+                innerPadding = innerPadding,
+                state = state,
+                controlsEnabled = controlsEnabled,
+                onRefresh = onRefresh,
+                onToggle = onToggle,
+                onAction = onAction,
+            )
+        }
     }
 }
 
 @Composable
-private fun HomeContent(
+private fun DashboardPage(
     innerPadding: PaddingValues,
     state: HomeState,
     controlsEnabled: Boolean,
+    onRefresh: () -> Unit,
+    onOpenServices: () -> Unit,
+    onAction: (StateAction) -> Unit,
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(
+            start = 20.dp,
+            top = innerPadding.calculateTopPadding() + 22.dp,
+            end = 20.dp,
+            bottom = innerPadding.calculateBottomPadding() + 24.dp,
+        ),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        item(key = "dashboard-header") {
+            PageHeader(
+                title = stringResource(R.string.app_name),
+                refreshing = state.refreshing,
+                onRefresh = onRefresh,
+            )
+        }
+        item(key = "dashboard-overview") {
+            StatusOverview(
+                state = state,
+                controlsEnabled = controlsEnabled,
+                onOpenServices = onOpenServices,
+            )
+        }
+        state.moduleNotice?.let { notice ->
+            item(key = "dashboard-module-notice") {
+                ModuleNoticeCard(notice = notice, onAction = onAction)
+            }
+        }
+        item(key = "dashboard-information") {
+            ManagerInformationCard()
+        }
+    }
+}
+
+@Composable
+private fun ServicesPage(
+    innerPadding: PaddingValues,
+    state: HomeState,
+    controlsEnabled: Boolean,
+    onRefresh: () -> Unit,
     onToggle: (ServiceUiModel, Boolean) -> Unit,
     onAction: (StateAction) -> Unit,
 ) {
@@ -398,13 +469,20 @@ private fun HomeContent(
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
-            start = 16.dp,
-            top = innerPadding.calculateTopPadding() + 8.dp,
-            end = 16.dp,
+            start = 20.dp,
+            top = innerPadding.calculateTopPadding() + 22.dp,
+            end = 20.dp,
             bottom = innerPadding.calculateBottomPadding() + 24.dp,
         ),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        item(key = "services-header") {
+            PageHeader(
+                title = stringResource(R.string.services),
+                refreshing = state.refreshing,
+                onRefresh = onRefresh,
+            )
+        }
         state.moduleNotice?.let { notice ->
             item(key = "module-notice") {
                 ModuleNoticeCard(notice = notice, onAction = onAction)
@@ -456,6 +534,219 @@ private fun HomeContent(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun PageHeader(
+    title: String,
+    refreshing: Boolean,
+    onRefresh: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(72.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = title,
+            modifier = Modifier.weight(1f),
+            color = MiuixTheme.colorScheme.onBackground,
+            style = MiuixTheme.textStyles.main,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (refreshing) {
+            Box(
+                modifier = Modifier.size(48.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator(size = 26.dp)
+            }
+        } else {
+            IconButton(onClick = onRefresh) {
+                Icon(
+                    imageVector = Icons.Rounded.Refresh,
+                    contentDescription = stringResource(R.string.refresh),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatusOverview(
+    state: HomeState,
+    controlsEnabled: Boolean,
+    onOpenServices: () -> Unit,
+) {
+    val darkTheme = isSystemInDarkTheme()
+    val readyBackground = if (darkTheme) Color(0xFF173D24) else Color(0xFFE1F6E5)
+    val readyForeground = if (darkTheme) Color(0xFF75D48A) else Color(0xFF39B857)
+    val statusTitle = if (controlsEnabled) {
+        stringResource(R.string.manager_running)
+    } else {
+        state.moduleNotice?.let { stringResource(it.title) }
+            ?: stringResource(R.string.manager_unavailable)
+    }
+    val statusColors = CardDefaults.defaultColors(
+        color = if (controlsEnabled) readyBackground else MiuixTheme.colorScheme.surface,
+        contentColor = if (controlsEnabled) readyForeground else MiuixTheme.colorScheme.onSurface,
+    )
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(204.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Card(
+            modifier = Modifier
+                .weight(1.08f)
+                .fillMaxHeight(),
+            colors = statusColors,
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Text(
+                    text = statusTitle,
+                    color = if (controlsEnabled) readyForeground else MiuixTheme.colorScheme.onSurface,
+                    style = MiuixTheme.textStyles.title3,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = stringResource(
+                        R.string.module_version_short,
+                        BuildConfig.BUNDLED_MODULE_VERSION_NAME,
+                    ),
+                    color = if (controlsEnabled) {
+                        readyForeground
+                    } else {
+                        MiuixTheme.colorScheme.onSurfaceVariantSummary
+                    },
+                    style = MiuixTheme.textStyles.body1,
+                )
+                Spacer(Modifier.weight(1f))
+                if (!controlsEnabled && state.moduleNotice?.loading == true) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.End),
+                        size = 64.dp,
+                    )
+                } else {
+                    Icon(
+                        imageVector = if (controlsEnabled) {
+                            Icons.Rounded.CheckCircle
+                        } else {
+                            Icons.Rounded.AccessibilityNew
+                        },
+                        contentDescription = null,
+                        modifier = Modifier
+                            .align(Alignment.End)
+                            .size(76.dp),
+                        tint = if (controlsEnabled) readyForeground else MiuixTheme.colorScheme.primary,
+                    )
+                }
+            }
+        }
+        Column(
+            modifier = Modifier
+                .weight(0.92f)
+                .fillMaxHeight(),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            MetricCard(
+                modifier = Modifier.weight(1f),
+                label = stringResource(R.string.services_total),
+                value = state.services.size,
+                onClick = onOpenServices,
+            )
+            MetricCard(
+                modifier = Modifier.weight(1f),
+                label = stringResource(R.string.services_enabled),
+                value = state.services.count { it.enabled },
+                onClick = onOpenServices,
+            )
+        }
+    }
+}
+
+@Composable
+private fun MetricCard(
+    modifier: Modifier,
+    label: String,
+    value: Int,
+    onClick: () -> Unit,
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        onClick = onClick,
+    ) {
+        Text(
+            text = label,
+            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            style = MiuixTheme.textStyles.body1,
+        )
+        Spacer(Modifier.weight(1f))
+        Text(
+            text = value.toString(),
+            color = MiuixTheme.colorScheme.onSurface,
+            style = MiuixTheme.textStyles.main,
+            fontWeight = FontWeight.Medium,
+        )
+    }
+}
+
+@Composable
+private fun ManagerInformationCard() {
+    val device = remember { "${Build.MANUFACTURER} ${Build.MODEL}".trim() }
+    val androidVersion = remember { "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})" }
+
+    Card(modifier = Modifier.fillMaxWidth()) {
+        InformationRow(
+            title = stringResource(R.string.manager_version),
+            value = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+        )
+        InformationRow(
+            title = stringResource(R.string.module_version),
+            value = BuildConfig.BUNDLED_MODULE_VERSION_NAME,
+        )
+        InformationRow(
+            title = stringResource(R.string.device_model),
+            value = device,
+        )
+        InformationRow(
+            title = stringResource(R.string.android_version),
+            value = androidVersion,
+        )
+    }
+}
+
+@Composable
+private fun InformationRow(
+    title: String,
+    value: String,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 10.dp),
+    ) {
+        Text(
+            text = title,
+            color = MiuixTheme.colorScheme.onSurface,
+            style = MiuixTheme.textStyles.headline1,
+            fontWeight = FontWeight.Medium,
+        )
+        Spacer(Modifier.height(5.dp))
+        Text(
+            text = value,
+            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            style = MiuixTheme.textStyles.body1,
+        )
     }
 }
 

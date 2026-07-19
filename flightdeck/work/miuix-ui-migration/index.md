@@ -6,7 +6,7 @@ Implementation complete. Awaiting UI and Root behavior validation on a rooted An
 
 ## Next
 
-Run the `构建管理器` workflow once, then install its APK artifact on a rooted Magisk device; inspect light/dark UI states and verify module installation, reboot, refresh, and service toggling.
+Run the `构建管理器` workflow once, then install its APK artifact on a rooted Magisk device; inspect the dashboard, floating navigation, light/dark UI states, and verify module installation, reboot, refresh, and service toggling.
 
 ## Read now
 
@@ -30,9 +30,11 @@ Verified:
 - The generated Magisk module ZIP is readable and byte-identical to the APK asset.
 - The `构建管理器` workflow now tests, verifies, packages, and uploads the manager APK.
 - Restored the service list as the permanent Miuix homepage and moved automatic-install progress, errors, retry, and reboot actions into an inline status card.
-- Manager version advanced to 2.0.1 (4).
+- Rebuilt the homepage around the SukiSU Ultra reference: large page title, module status card, service metrics, manager/device information, and Miuix floating navigation to the service list.
+- Manager version advanced to 2.1.0 (5).
 
 ## Open questions
 
 - Rooted-device UI and behavior validation requires a connected Android device.
+- Dashboard screenshots could not be captured because no Android device or emulator is connected.
 - The shell regression test could not be rerun in this Windows environment because no Bash or WSL distribution is installed.

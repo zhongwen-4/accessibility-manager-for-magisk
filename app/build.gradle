@@ -9,6 +9,7 @@ rootProject.file('module.prop').withReader('UTF-8') { reader ->
     moduleProperties.load(reader)
 }
 def bundledModuleVersionCode = moduleProperties.getProperty('versionCode')
+def bundledModuleVersionName = moduleProperties.getProperty('version')
 def generatedModuleAssets = layout.buildDirectory.dir('generated/magiskModuleAssets')
 def moduleFiles = [
         'module.prop',
@@ -41,10 +42,11 @@ android {
         applicationId 'com.accessibilitymanager'
         minSdk 26
         targetSdk 36
-        versionCode 4
-        versionName '2.0.1'
+        versionCode 5
+        versionName '2.1.0'
 
         buildConfigField 'int', 'BUNDLED_MODULE_VERSION_CODE', bundledModuleVersionCode
+        buildConfigField 'String', 'BUNDLED_MODULE_VERSION_NAME', "\"${bundledModuleVersionName}\""
 
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }

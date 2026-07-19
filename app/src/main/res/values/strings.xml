@@ -2,6 +2,17 @@
 <resources>
     <string name="app_name">Accessibility Manager</string>
     <string name="refresh">Refresh</string>
+    <string name="home">Home</string>
+    <string name="services">Services</string>
+    <string name="manager_running">Manager active</string>
+    <string name="manager_unavailable">Manager unavailable</string>
+    <string name="module_version_short">Module %1$s</string>
+    <string name="services_total">Services</string>
+    <string name="services_enabled">Enabled</string>
+    <string name="manager_version">Manager version</string>
+    <string name="module_version">Module version</string>
+    <string name="device_model">Device model</string>
+    <string name="android_version">Android version</string>
     <plurals name="services_summary">
         <item quantity="one">%1$d service · %2$d enabled</item>
         <item quantity="other">%1$d services · %2$d enabled</item>
