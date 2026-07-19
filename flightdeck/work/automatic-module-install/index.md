@@ -6,7 +6,7 @@ Implementation complete. Awaiting validation on a rooted device running Magisk.
 
 ## Next
 
-Install the generated APK on a rooted Magisk device; verify automatic installation, reboot, and service toggling.
+Run the `构建管理器` workflow once, then install its APK artifact on a rooted Magisk device; verify automatic installation, reboot, and service toggling.
 
 ## Read now
 
@@ -28,6 +28,7 @@ Verified:
 - APK signature verifies.
 - Bundled module archive is valid and byte-identical to the APK asset.
 - Existing `a11yctl` regression tests pass.
+- The `构建管理器` workflow now runs the automated checks and verifies the embedded module before uploading the APK.
 
 ## Open questions
 

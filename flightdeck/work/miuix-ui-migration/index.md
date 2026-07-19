@@ -6,7 +6,7 @@ Implementation complete. Awaiting UI and Root behavior validation on a rooted An
 
 ## Next
 
-Install `dist/accessibility-manager-miuix-debug.apk` on a rooted Magisk device; inspect light/dark UI states and verify module installation, reboot, refresh, and service toggling.
+Run the `构建管理器` workflow once, then install its APK artifact on a rooted Magisk device; inspect light/dark UI states and verify module installation, reboot, refresh, and service toggling.
 
 ## Read now
 
@@ -28,6 +28,7 @@ Verified:
 - Five unit tests pass and Android Lint reports no issues.
 - The debug APK assembles and its v2 signature verifies.
 - The generated Magisk module ZIP is readable and byte-identical to the APK asset.
+- The `构建管理器` workflow now tests, verifies, packages, and uploads the manager APK.
 
 ## Open questions
 

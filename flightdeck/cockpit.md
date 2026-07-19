@@ -1,6 +1,6 @@
 # Cockpit — Accessibility-Manager
 
-Focus: Validate the Miuix manager and automatic module installation on a rooted Magisk device.
+Focus: Validate the manager build workflow, then test the Miuix manager and automatic module installation on a rooted Magisk device.
 
 ## In flight
 
@@ -9,7 +9,7 @@ Focus: Validate the Miuix manager and automatic module installation on a rooted 
 
 ## Next
 
-- Install `dist/accessibility-manager-miuix-debug.apk` on a rooted Magisk device and validate both active topics end to end.
+- Run the `构建管理器` workflow once, then install its APK artifact on a rooted Magisk device and validate both active topics end to end.
 
 ## Open questions
 
