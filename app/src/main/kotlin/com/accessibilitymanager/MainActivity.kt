@@ -1096,7 +1096,9 @@ private fun ServiceRow(
                 Image(
                     bitmap = bitmap,
                     contentDescription = null,
-                    modifier = Modifier.size(44.dp),
+                    modifier = Modifier
+                        .offset(x = 3.dp)
+                        .size(44.dp),
                 )
                 Spacer(Modifier.width(14.dp))
                 Column(modifier = Modifier.weight(1f)) {
