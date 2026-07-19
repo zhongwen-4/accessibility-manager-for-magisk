@@ -48,13 +48,13 @@
     <string name="module_ready_title">安装完成</string>
     <string name="module_ready_message">重启设备后，管理组件即可生效。</string>
     <string name="module_disabled_title">模块已停用</string>
-    <string name="module_disabled_message">请在 Magisk 中启用无障碍管理模块，然后重启设备。</string>
+    <string name="module_disabled_message">请在 Magisk 或 SukiSU Ultra 中启用无障碍管理模块，然后重启设备。</string>
     <string name="module_install_failed_title">自动安装失败</string>
     <string name="module_root_unavailable">当前设备无法使用 Root。</string>
     <string name="module_root_denied">Root 授权被拒绝或模块检测失败。</string>
-    <string name="module_magisk_missing">未找到 Magisk，自动安装需要 Magisk。</string>
+    <string name="module_root_manager_missing">未找到 Magisk 或 SukiSU Ultra，自动安装需要受支持的 Root 管理器。</string>
     <string name="module_asset_error">无法准备应用内置的模块文件。</string>
-    <string name="module_install_error">Magisk 无法安装内置模块。</string>
+    <string name="module_install_error">Root 管理器无法安装内置模块。</string>
     <string name="module_install_timeout">模块操作超时。</string>
     <string name="retry">重试</string>
     <string name="reboot_now">立即重启</string>

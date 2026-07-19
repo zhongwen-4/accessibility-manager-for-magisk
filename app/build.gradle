@@ -42,8 +42,8 @@ android {
         applicationId 'com.accessibilitymanager'
         minSdk 26
         targetSdk 36
-        versionCode 8
-        versionName '2.4.0'
+        versionCode 9
+        versionName '2.5.0'
 
         buildConfigField 'int', 'BUNDLED_MODULE_VERSION_CODE', bundledModuleVersionCode
         buildConfigField 'String', 'BUNDLED_MODULE_VERSION_NAME', "\"${bundledModuleVersionName}\""

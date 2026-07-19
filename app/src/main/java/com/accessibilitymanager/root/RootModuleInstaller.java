@@ -12,8 +12,8 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 
-public final class MagiskModuleInstaller {
-    private static final String TAG = "MagiskModuleInstaller";
+public final class RootModuleInstaller {
+    private static final String TAG = "RootModuleInstaller";
     private static final String MODULE_ASSET = "accessibility-manager-module.zip";
     private static final long STATUS_TIMEOUT_SECONDS = 60;
     private static final long INSTALL_TIMEOUT_SECONDS = 90;
@@ -34,7 +34,7 @@ public final class MagiskModuleInstaller {
 
     private final Context context;
 
-    public MagiskModuleInstaller(Context context) {
+    public RootModuleInstaller(Context context) {
         this.context = context.getApplicationContext();
     }
 
@@ -79,14 +79,7 @@ public final class MagiskModuleInstaller {
             return Result.failure(State.ASSET_ERROR);
         }
 
-        String quotedPath = shellQuote(moduleZip.getAbsolutePath());
-        String installCommand =
-                "magisk_bin=$(command -v magisk 2>/dev/null); "
-                        + "[ -n \"$magisk_bin\" ] || "
-                        + "[ ! -x /data/adb/magisk/magisk ] || magisk_bin=/data/adb/magisk/magisk; "
-                        + "[ -n \"$magisk_bin\" ] || "
-                        + "{ echo __MAGISK_MISSING__; exit 127; }; "
-                        + "\"$magisk_bin\" --install-module " + quotedPath;
+        String installCommand = ModuleInstallCommandBuilder.build(moduleZip.getAbsolutePath());
         CommandResult installation = runRootCommand(installCommand, INSTALL_TIMEOUT_SECONDS);
         if (!installation.started) {
             return Result.failure(State.ROOT_UNAVAILABLE);
@@ -94,8 +87,8 @@ public final class MagiskModuleInstaller {
         if (installation.timedOut) {
             return Result.failure(State.TIMEOUT);
         }
-        if (installation.output.contains("__MAGISK_MISSING__")) {
-            return Result.failure(State.MAGISK_MISSING);
+        if (installation.output.contains(ModuleInstallCommandBuilder.ROOT_MANAGER_MISSING_MARKER)) {
+            return Result.failure(State.ROOT_MANAGER_MISSING);
         }
         if (installation.exitCode != 0) {
             Log.w(TAG, "Module installation failed: " + installation.output);
@@ -177,17 +170,13 @@ public final class MagiskModuleInstaller {
         return output.toString();
     }
 
-    private static String shellQuote(String value) {
-        return "'" + value.replace("'", "'\\''") + "'";
-    }
-
     public enum State {
         READY,
         REBOOT_REQUIRED,
         MODULE_DISABLED,
         ROOT_UNAVAILABLE,
         ROOT_DENIED_OR_COMMAND_FAILED,
-        MAGISK_MISSING,
+        ROOT_MANAGER_MISSING,
         ASSET_ERROR,
         INSTALL_FAILED,
         TIMEOUT

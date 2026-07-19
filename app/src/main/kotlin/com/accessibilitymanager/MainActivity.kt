@@ -70,7 +70,7 @@ import com.accessibilitymanager.data.AccessibilityServicesRepository
 import com.accessibilitymanager.data.ManagerLogEntry
 import com.accessibilitymanager.data.ManagerLogLevel
 import com.accessibilitymanager.data.ManagerLogStore
-import com.accessibilitymanager.root.MagiskModuleInstaller
+import com.accessibilitymanager.root.RootModuleInstaller
 import com.accessibilitymanager.root.RootServiceManager
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
@@ -100,7 +100,7 @@ class MainActivity : ComponentActivity() {
     private val rootServiceManager = RootServiceManager()
 
     private lateinit var repository: AccessibilityServicesRepository
-    private lateinit var moduleInstaller: MagiskModuleInstaller
+    private lateinit var moduleInstaller: RootModuleInstaller
     private lateinit var logStore: ManagerLogStore
     private var logEntries by mutableStateOf<List<ManagerLogEntry>>(emptyList())
     private var homeState by mutableStateOf(
@@ -121,7 +121,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         repository = AccessibilityServicesRepository(applicationContext)
-        moduleInstaller = MagiskModuleInstaller(applicationContext)
+        moduleInstaller = RootModuleInstaller(applicationContext)
         logStore = ManagerLogStore(applicationContext)
         logEntries = logStore.load()
         addLog(ManagerLogLevel.INFO, R.string.log_app_started)
@@ -170,7 +170,7 @@ class MainActivity : ComponentActivity() {
                 if (destroyed) return@post
                 moduleOperationRunning = false
                 when {
-                    result.isSuccessful && result.state == MagiskModuleInstaller.State.READY -> {
+                    result.isSuccessful && result.state == RootModuleInstaller.State.READY -> {
                         moduleReady = true
                         homeState = homeState.copy(moduleNotice = null)
                         addLog(ManagerLogLevel.SUCCESS, R.string.log_module_ready)
@@ -178,7 +178,7 @@ class MainActivity : ComponentActivity() {
                     }
 
                     result.isSuccessful &&
-                        result.state == MagiskModuleInstaller.State.REBOOT_REQUIRED -> {
+                        result.state == RootModuleInstaller.State.REBOOT_REQUIRED -> {
                         homeState = homeState.copy(
                             moduleNotice = ModuleNotice(
                                 R.string.module_ready_title,
@@ -395,20 +395,20 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun showModuleFailure(state: MagiskModuleInstaller.State) {
+    private fun showModuleFailure(state: RootModuleInstaller.State) {
         val title: Int
         val message: Int
-        if (state == MagiskModuleInstaller.State.MODULE_DISABLED) {
+        if (state == RootModuleInstaller.State.MODULE_DISABLED) {
             title = R.string.module_disabled_title
             message = R.string.module_disabled_message
         } else {
             title = R.string.module_install_failed_title
             message = when (state) {
-                MagiskModuleInstaller.State.ROOT_UNAVAILABLE -> R.string.module_root_unavailable
-                MagiskModuleInstaller.State.MAGISK_MISSING -> R.string.module_magisk_missing
-                MagiskModuleInstaller.State.ASSET_ERROR -> R.string.module_asset_error
-                MagiskModuleInstaller.State.INSTALL_FAILED -> R.string.module_install_error
-                MagiskModuleInstaller.State.TIMEOUT -> R.string.module_install_timeout
+                RootModuleInstaller.State.ROOT_UNAVAILABLE -> R.string.module_root_unavailable
+                RootModuleInstaller.State.ROOT_MANAGER_MISSING -> R.string.module_root_manager_missing
+                RootModuleInstaller.State.ASSET_ERROR -> R.string.module_asset_error
+                RootModuleInstaller.State.INSTALL_FAILED -> R.string.module_install_error
+                RootModuleInstaller.State.TIMEOUT -> R.string.module_install_timeout
                 else -> R.string.module_root_denied
             }
         }
