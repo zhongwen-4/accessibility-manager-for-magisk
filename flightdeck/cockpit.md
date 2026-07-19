@@ -1,6 +1,6 @@
 # Cockpit — Accessibility-Manager
 
-Focus: Validate the SukiSU-style Miuix dashboard and automatic module installation on a rooted Magisk device.
+Focus: Validate the upstream-derived SukiSU Miuix dashboard and automatic module installation on a rooted Magisk device.
 
 ## In flight
 

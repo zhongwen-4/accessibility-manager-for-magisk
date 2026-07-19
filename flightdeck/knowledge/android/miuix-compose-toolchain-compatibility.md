@@ -12,3 +12,5 @@ The verified toolchain is Kotlin/Compose plugin 2.3.20, Android Gradle Plugin 8.
 Do not independently upgrade to Core 1.19: it requires compile SDK 37 and Android Gradle Plugin 9.1. Miuix 0.9.3 likewise moves the project to the API 37/Kotlin 2.4 generation. Treat either upgrade as a coordinated toolchain migration, then rerun unit tests, APK assembly, and Android Lint.
 
 Android Gradle Plugin 8.7 cannot reliably run current Kotlin Compose Lint detectors; use the verified toolchain instead of suppressing detector failures.
+
+SukiSU Ultra `main@278d822` uses Miuix 0.9.2, Kotlin 2.4, Android Gradle Plugin 9.2.1, and API 37. When adapting its manager UI to this API 36 project, port the `HomeMiuix.kt` layout primitives and the standard `BottomBarMiuix.kt` navigation branch. Its custom blurred `FloatingBottomBar` depends on the newer Miuix blur stack and must wait for a coordinated API 37 toolchain migration.

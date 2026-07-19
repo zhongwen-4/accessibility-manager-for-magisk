@@ -6,7 +6,7 @@ Implementation complete. Awaiting UI and Root behavior validation on a rooted An
 
 ## Next
 
-Run the `构建管理器` workflow once, then install its APK artifact on a rooted Magisk device; inspect the dashboard, floating navigation, light/dark UI states, and verify module installation, reboot, refresh, and service toggling.
+Run the `构建管理器` workflow once, then install its APK artifact on a rooted Magisk device; inspect the upstream-derived dashboard, bottom navigation, light/dark UI states, and verify module installation, reboot, refresh, and service toggling.
 
 ## Read now
 
@@ -30,8 +30,9 @@ Verified:
 - The generated Magisk module ZIP is readable and byte-identical to the APK asset.
 - The `构建管理器` workflow now tests, verifies, packages, and uploads the manager APK.
 - Restored the service list as the permanent Miuix homepage and moved automatic-install progress, errors, retry, and reboot actions into an inline status card.
-- Rebuilt the homepage around the SukiSU Ultra reference: large page title, module status card, service metrics, manager/device information, and Miuix floating navigation to the service list.
-- Manager version advanced to 2.1.0 (5).
+- Adapted the homepage directly from SukiSU Ultra `HomeMiuix.kt` and the standard branch of `BottomBarMiuix.kt` at `main@278d822`, preserving its TopAppBar, three-card status layout, oversized offset status icon, Tilt feedback, information-card typography, and navigation structure.
+- Added the GPL-3.0 source revision and adapted-file attribution to `THIRD_PARTY_NOTICES.md`.
+- Manager version advanced to 2.2.0 (6).
 
 ## Open questions
 

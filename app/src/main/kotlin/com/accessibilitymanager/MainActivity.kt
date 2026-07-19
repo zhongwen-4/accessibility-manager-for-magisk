@@ -15,6 +15,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -30,8 +32,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccessibilityNew
-import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.CheckCircleOutline
+import androidx.compose.material.icons.rounded.Cottage
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -43,11 +45,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.graphics.createBitmap
 import com.accessibilitymanager.data.AccessibilityServicesRepository
 import com.accessibilitymanager.root.MagiskModuleInstaller
@@ -55,17 +60,21 @@ import com.accessibilitymanager.root.RootServiceManager
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
-import top.yukonga.miuix.kmp.basic.FloatingNavigationBar
-import top.yukonga.miuix.kmp.basic.FloatingNavigationBarItem
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.basic.NavigationBar
+import top.yukonga.miuix.kmp.basic.NavigationBarItem
 import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.Switch
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.darkColorScheme
 import top.yukonga.miuix.kmp.theme.lightColorScheme
+import top.yukonga.miuix.kmp.utils.PressFeedbackType
 import java.util.concurrent.Executors
 
 class MainActivity : ComponentActivity() {
@@ -365,17 +374,48 @@ private fun AccessibilityManagerScreen(
     onAction: (StateAction) -> Unit,
 ) {
     var selectedPage by remember { mutableStateOf(ManagerPage.HOME) }
+    val homeScrollBehavior = MiuixScrollBehavior()
+    val servicesScrollBehavior = MiuixScrollBehavior()
+    val currentScrollBehavior = if (selectedPage == ManagerPage.HOME) {
+        homeScrollBehavior
+    } else {
+        servicesScrollBehavior
+    }
 
     Scaffold(
+        topBar = {
+            TopAppBar(
+                title = if (selectedPage == ManagerPage.HOME) {
+                    stringResource(R.string.app_name)
+                } else {
+                    stringResource(R.string.services)
+                },
+                actions = {
+                    if (state.refreshing) {
+                        CircularProgressIndicator(size = 24.dp)
+                    } else {
+                        IconButton(onClick = onRefresh) {
+                            Icon(
+                                imageVector = Icons.Rounded.Refresh,
+                                contentDescription = stringResource(R.string.refresh),
+                            )
+                        }
+                    }
+                },
+                scrollBehavior = currentScrollBehavior,
+            )
+        },
         bottomBar = {
-            FloatingNavigationBar {
-                FloatingNavigationBarItem(
+            NavigationBar {
+                NavigationBarItem(
+                    modifier = Modifier.weight(1f),
                     selected = selectedPage == ManagerPage.HOME,
                     onClick = { selectedPage = ManagerPage.HOME },
-                    icon = Icons.Rounded.Home,
+                    icon = Icons.Rounded.Cottage,
                     label = stringResource(R.string.home),
                 )
-                FloatingNavigationBarItem(
+                NavigationBarItem(
+                    modifier = Modifier.weight(1f),
                     selected = selectedPage == ManagerPage.SERVICES,
                     onClick = { selectedPage = ManagerPage.SERVICES },
                     icon = Icons.Rounded.AccessibilityNew,
@@ -389,63 +429,57 @@ private fun AccessibilityManagerScreen(
                 innerPadding = innerPadding,
                 state = state,
                 controlsEnabled = controlsEnabled,
-                onRefresh = onRefresh,
                 onOpenServices = { selectedPage = ManagerPage.SERVICES },
                 onAction = onAction,
+                scrollBehavior = homeScrollBehavior,
             )
 
             ManagerPage.SERVICES -> ServicesPage(
                 innerPadding = innerPadding,
                 state = state,
                 controlsEnabled = controlsEnabled,
-                onRefresh = onRefresh,
                 onToggle = onToggle,
                 onAction = onAction,
+                scrollBehavior = servicesScrollBehavior,
             )
         }
     }
 }
 
 @Composable
+// Dashboard structure adapted from SukiSU Ultra's GPL-3.0 HomeMiuix at main@278d822.
 private fun DashboardPage(
     innerPadding: PaddingValues,
     state: HomeState,
     controlsEnabled: Boolean,
-    onRefresh: () -> Unit,
     onOpenServices: () -> Unit,
     onAction: (StateAction) -> Unit,
+    scrollBehavior: ScrollBehavior,
 ) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(
-            start = 20.dp,
-            top = innerPadding.calculateTopPadding() + 22.dp,
-            end = 20.dp,
-            bottom = innerPadding.calculateBottomPadding() + 24.dp,
-        ),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        modifier = Modifier
+            .fillMaxHeight()
+            .nestedScroll(scrollBehavior.nestedScrollConnection)
+            .padding(horizontal = 12.dp),
+        contentPadding = innerPadding,
     ) {
-        item(key = "dashboard-header") {
-            PageHeader(
-                title = stringResource(R.string.app_name),
-                refreshing = state.refreshing,
-                onRefresh = onRefresh,
-            )
-        }
-        item(key = "dashboard-overview") {
-            StatusOverview(
-                state = state,
-                controlsEnabled = controlsEnabled,
-                onOpenServices = onOpenServices,
-            )
-        }
-        state.moduleNotice?.let { notice ->
-            item(key = "dashboard-module-notice") {
-                ModuleNoticeCard(notice = notice, onAction = onAction)
+        item {
+            Column(
+                modifier = Modifier.padding(vertical = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                state.moduleNotice?.let { notice ->
+                    ModuleNoticeCard(notice = notice, onAction = onAction)
+                }
+                StatusOverview(
+                    state = state,
+                    controlsEnabled = controlsEnabled,
+                    onOpenServices = onOpenServices,
+                    onAction = onAction,
+                )
+                ManagerInformationCard()
             }
-        }
-        item(key = "dashboard-information") {
-            ManagerInformationCard()
         }
     }
 }
@@ -455,9 +489,9 @@ private fun ServicesPage(
     innerPadding: PaddingValues,
     state: HomeState,
     controlsEnabled: Boolean,
-    onRefresh: () -> Unit,
     onToggle: (ServiceUiModel, Boolean) -> Unit,
     onAction: (StateAction) -> Unit,
+    scrollBehavior: ScrollBehavior,
 ) {
     val summary = pluralStringResource(
         R.plurals.services_summary,
@@ -467,22 +501,13 @@ private fun ServicesPage(
     )
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(
-            start = 20.dp,
-            top = innerPadding.calculateTopPadding() + 22.dp,
-            end = 20.dp,
-            bottom = innerPadding.calculateBottomPadding() + 24.dp,
-        ),
+        modifier = Modifier
+            .fillMaxHeight()
+            .nestedScroll(scrollBehavior.nestedScrollConnection)
+            .padding(horizontal = 12.dp),
+        contentPadding = innerPadding,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item(key = "services-header") {
-            PageHeader(
-                title = stringResource(R.string.services),
-                refreshing = state.refreshing,
-                onRefresh = onRefresh,
-            )
-        }
         state.moduleNotice?.let { notice ->
             item(key = "module-notice") {
                 ModuleNoticeCard(notice = notice, onAction = onAction)
@@ -538,53 +563,15 @@ private fun ServicesPage(
 }
 
 @Composable
-private fun PageHeader(
-    title: String,
-    refreshing: Boolean,
-    onRefresh: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(72.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = title,
-            modifier = Modifier.weight(1f),
-            color = MiuixTheme.colorScheme.onBackground,
-            style = MiuixTheme.textStyles.main,
-            fontWeight = FontWeight.Medium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        if (refreshing) {
-            Box(
-                modifier = Modifier.size(48.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                CircularProgressIndicator(size = 26.dp)
-            }
-        } else {
-            IconButton(onClick = onRefresh) {
-                Icon(
-                    imageVector = Icons.Rounded.Refresh,
-                    contentDescription = stringResource(R.string.refresh),
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun StatusOverview(
     state: HomeState,
     controlsEnabled: Boolean,
     onOpenServices: () -> Unit,
+    onAction: (StateAction) -> Unit,
 ) {
     val darkTheme = isSystemInDarkTheme()
-    val readyBackground = if (darkTheme) Color(0xFF173D24) else Color(0xFFE1F6E5)
-    val readyForeground = if (darkTheme) Color(0xFF75D48A) else Color(0xFF39B857)
+    val readyBackground = if (darkTheme) Color(0xFF1A3825) else Color(0xFFDFFAE4)
+    val readyForeground = Color(0xFF36D167)
     val statusTitle = if (controlsEnabled) {
         stringResource(R.string.manager_running)
     } else {
@@ -593,70 +580,87 @@ private fun StatusOverview(
     }
     val statusColors = CardDefaults.defaultColors(
         color = if (controlsEnabled) readyBackground else MiuixTheme.colorScheme.surface,
-        contentColor = if (controlsEnabled) readyForeground else MiuixTheme.colorScheme.onSurface,
     )
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(204.dp),
+            .height(IntrinsicSize.Min),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Card(
             modifier = Modifier
-                .weight(1.08f)
+                .weight(1f)
                 .fillMaxHeight(),
             colors = statusColors,
-        ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                Text(
-                    text = statusTitle,
-                    color = if (controlsEnabled) readyForeground else MiuixTheme.colorScheme.onSurface,
-                    style = MiuixTheme.textStyles.title3,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    text = stringResource(
-                        R.string.module_version_short,
-                        BuildConfig.BUNDLED_MODULE_VERSION_NAME,
-                    ),
-                    color = if (controlsEnabled) {
-                        readyForeground
-                    } else {
-                        MiuixTheme.colorScheme.onSurfaceVariantSummary
-                    },
-                    style = MiuixTheme.textStyles.body1,
-                )
-                Spacer(Modifier.weight(1f))
-                if (!controlsEnabled && state.moduleNotice?.loading == true) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.End),
-                        size = 64.dp,
-                    )
+            insideMargin = PaddingValues(0.dp),
+            onClick = {
+                if (controlsEnabled) {
+                    onOpenServices()
                 } else {
-                    Icon(
-                        imageVector = if (controlsEnabled) {
-                            Icons.Rounded.CheckCircle
-                        } else {
-                            Icons.Rounded.AccessibilityNew
-                        },
-                        contentDescription = null,
-                        modifier = Modifier
-                            .align(Alignment.End)
-                            .size(76.dp),
-                        tint = if (controlsEnabled) readyForeground else MiuixTheme.colorScheme.primary,
+                    onAction(state.moduleNotice?.action ?: StateAction.RETRY_MODULE)
+                }
+            },
+            showIndication = true,
+            pressFeedbackType = PressFeedbackType.Tilt,
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .offset(38.dp, 45.dp),
+                    contentAlignment = Alignment.BottomEnd,
+                ) {
+                    if (!controlsEnabled && state.moduleNotice?.loading == true) {
+                        CircularProgressIndicator(size = 72.dp)
+                    } else {
+                        Icon(
+                            modifier = Modifier.size(170.dp),
+                            imageVector = if (controlsEnabled) {
+                                Icons.Rounded.CheckCircleOutline
+                            } else {
+                                Icons.Rounded.AccessibilityNew
+                            },
+                            tint = if (controlsEnabled) {
+                                readyForeground
+                            } else {
+                                MiuixTheme.colorScheme.primary
+                            },
+                            contentDescription = null,
+                        )
+                    }
+                }
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                ) {
+                    Text(
+                        modifier = Modifier.fillMaxWidth(),
+                        text = statusTitle,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        modifier = Modifier.fillMaxWidth(),
+                        text = stringResource(
+                            R.string.module_version_short,
+                            BuildConfig.BUNDLED_MODULE_VERSION_NAME,
+                        ),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
                     )
                 }
             }
         }
         Column(
             modifier = Modifier
-                .weight(0.92f)
+                .weight(1f)
                 .fillMaxHeight(),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             MetricCard(
                 modifier = Modifier.weight(1f),
@@ -664,6 +668,7 @@ private fun StatusOverview(
                 value = state.services.size,
                 onClick = onOpenServices,
             )
+            Spacer(Modifier.height(12.dp))
             MetricCard(
                 modifier = Modifier.weight(1f),
                 label = stringResource(R.string.services_enabled),
@@ -683,20 +688,30 @@ private fun MetricCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
+        insideMargin = PaddingValues(16.dp),
         onClick = onClick,
+        showIndication = true,
+        pressFeedbackType = PressFeedbackType.Tilt,
     ) {
-        Text(
-            text = label,
-            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-            style = MiuixTheme.textStyles.body1,
-        )
-        Spacer(Modifier.weight(1f))
-        Text(
-            text = value.toString(),
-            color = MiuixTheme.colorScheme.onSurface,
-            style = MiuixTheme.textStyles.main,
-            fontWeight = FontWeight.Medium,
-        )
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.Start,
+        ) {
+            Text(
+                modifier = Modifier.fillMaxWidth(),
+                text = label,
+                fontWeight = FontWeight.Medium,
+                fontSize = 15.sp,
+                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            )
+            Text(
+                modifier = Modifier.fillMaxWidth(),
+                text = value.toString(),
+                fontSize = 26.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = MiuixTheme.colorScheme.onSurface,
+            )
+        }
     }
 }
 
@@ -705,23 +720,33 @@ private fun ManagerInformationCard() {
     val device = remember { "${Build.MANUFACTURER} ${Build.MODEL}".trim() }
     val androidVersion = remember { "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})" }
 
-    Card(modifier = Modifier.fillMaxWidth()) {
-        InformationRow(
-            title = stringResource(R.string.manager_version),
-            value = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
-        )
-        InformationRow(
-            title = stringResource(R.string.module_version),
-            value = BuildConfig.BUNDLED_MODULE_VERSION_NAME,
-        )
-        InformationRow(
-            title = stringResource(R.string.device_model),
-            value = device,
-        )
-        InformationRow(
-            title = stringResource(R.string.android_version),
-            value = androidVersion,
-        )
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        insideMargin = PaddingValues(0.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+        ) {
+            InformationRow(
+                title = stringResource(R.string.manager_version),
+                value = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+            )
+            InformationRow(
+                title = stringResource(R.string.module_version),
+                value = BuildConfig.BUNDLED_MODULE_VERSION_NAME,
+            )
+            InformationRow(
+                title = stringResource(R.string.device_model),
+                value = device,
+            )
+            InformationRow(
+                title = stringResource(R.string.android_version),
+                value = androidVersion,
+                bottomPadding = 0.dp,
+            )
+        }
     }
 }
 
@@ -729,25 +754,20 @@ private fun ManagerInformationCard() {
 private fun InformationRow(
     title: String,
     value: String,
+    bottomPadding: Dp = 24.dp,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 10.dp),
-    ) {
-        Text(
-            text = title,
-            color = MiuixTheme.colorScheme.onSurface,
-            style = MiuixTheme.textStyles.headline1,
-            fontWeight = FontWeight.Medium,
-        )
-        Spacer(Modifier.height(5.dp))
-        Text(
-            text = value,
-            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-            style = MiuixTheme.textStyles.body1,
-        )
-    }
+    Text(
+        text = title,
+        fontSize = MiuixTheme.textStyles.headline1.fontSize,
+        fontWeight = FontWeight.Medium,
+        color = MiuixTheme.colorScheme.onSurface,
+    )
+    Text(
+        text = value,
+        fontSize = MiuixTheme.textStyles.body2.fontSize,
+        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+        modifier = Modifier.padding(top = 2.dp, bottom = bottomPadding),
+    )
 }
 
 @Composable
