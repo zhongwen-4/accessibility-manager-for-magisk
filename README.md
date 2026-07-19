@@ -4,6 +4,8 @@
 
 仓库同时包含一个 Android 管理应用。应用首页列出设备中已安装的无障碍服务，并通过 Root 调用模块的 `a11yctl` 命令切换及保存服务状态。APK 内置当前版本的 Magisk 模块，首次启动时会自动检测、安装或更新模块。
 
+管理应用使用 Kotlin、Jetpack Compose 和 [compose-miuix-ui/miuix](https://github.com/compose-miuix-ui/miuix) 构建，界面采用与 SukiSU Ultra 同源的 Miuix 组件。
+
 默认采用 `ensure` 模式：只确保配置中的服务已启用，不会关闭用户手动启用的其他服务。模块不会绕过应用自身的无障碍服务声明，也不能让未安装或声明错误的服务生效。
 
 ## 安装

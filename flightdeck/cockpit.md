@@ -1,15 +1,16 @@
 # Cockpit — Accessibility-Manager
 
-Focus: Validate automatic Magisk module installation on a rooted device.
+Focus: Validate the Miuix manager and automatic module installation on a rooted Magisk device.
 
 ## In flight
 
 - `automatic-module-install` — implementation complete; rooted-device validation remains.
+- `miuix-ui-migration` — implementation complete; rooted-device UI validation remains.
 
 ## Next
 
-- Install `accessibility-manager-auto-install-debug.apk` on a Magisk device and verify install, reboot, and service toggling.
+- Install `dist/accessibility-manager-miuix-debug.apk` on a rooted Magisk device and validate both active topics end to end.
 
 ## Open questions
 
-- No rooted Android device is currently connected for end-to-end validation.
+- No rooted Android device is currently connected for end-to-end validation of either active topic.

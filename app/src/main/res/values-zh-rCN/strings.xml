@@ -2,7 +2,6 @@
 <resources>
     <string name="app_name">无障碍管理</string>
     <string name="refresh">刷新</string>
-    <string name="service_switch_description">切换 %1$s 无障碍服务</string>
     <plurals name="services_summary">
         <item quantity="other">%1$d 个服务 · %2$d 个已启用</item>
     </plurals>
@@ -10,6 +9,8 @@
     <string name="no_services_message">安装带有无障碍服务的应用后，它们会显示在这里。</string>
     <string name="load_failed_title">无法加载服务</string>
     <string name="load_failed_message">请刷新列表或重新打开应用。</string>
+    <string name="loading_services_title">正在加载服务</string>
+    <string name="loading_services_message">正在读取已安装的无障碍服务…</string>
     <string name="error_module_missing">尚未安装 Accessibility Manager Magisk 模块。</string>
     <string name="error_root_unavailable">当前设备无法使用 Root。</string>
     <string name="error_root_denied">Root 授权被拒绝或操作失败。</string>

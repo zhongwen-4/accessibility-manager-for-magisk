@@ -2,7 +2,6 @@
 <resources>
     <string name="app_name">Accessibility Manager</string>
     <string name="refresh">Refresh</string>
-    <string name="service_switch_description">Toggle %1$s accessibility service</string>
     <plurals name="services_summary">
         <item quantity="one">%1$d service · %2$d enabled</item>
         <item quantity="other">%1$d services · %2$d enabled</item>
@@ -11,6 +10,8 @@
     <string name="no_services_message">Installed accessibility services will appear here.</string>
     <string name="load_failed_title">Unable to load services</string>
     <string name="load_failed_message">Refresh the list or restart the app.</string>
+    <string name="loading_services_title">Loading services</string>
+    <string name="loading_services_message">Reading installed accessibility services…</string>
     <string name="error_module_missing">Accessibility Manager Magisk module is not installed.</string>
     <string name="error_root_unavailable">Root is unavailable on this device.</string>
     <string name="error_root_denied">Root access was denied or the operation failed.</string>
