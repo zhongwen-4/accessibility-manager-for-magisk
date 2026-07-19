@@ -35,12 +35,12 @@ else
   log_message "应用无障碍服务配置失败"
 fi
 
-watch_interval=$(config_value WATCH_INTERVAL 0)
+watch_interval=$(config_value LOCK_WATCH_INTERVAL 3)
 case "$watch_interval" in
-  ''|*[!0-9]*) watch_interval=0 ;;
+  ''|*[!0-9]*) watch_interval=3 ;;
 esac
 
 while [ "$watch_interval" -gt 0 ]; do
   sleep "$watch_interval"
-  "$A11YCTL" apply --quiet || log_message "定时应用配置失败"
+  "$A11YCTL" apply --quiet || log_message "恢复锁定的无障碍服务失败"
 done

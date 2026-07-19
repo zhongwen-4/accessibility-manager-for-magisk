@@ -1,6 +1,6 @@
 # Accessibility Manager
 
-一个通过 Magisk 管理 Android 无障碍服务的模块。它提供 `a11yctl` 命令，并可在开机后恢复指定的无障碍服务。
+一个通过 Magisk 管理 Android 无障碍服务的模块。它提供 `a11yctl` 命令，并可在开机后及运行期间自动恢复锁定的无障碍服务。
 
 仓库同时包含一个 Android 管理应用。应用首页列出设备中已安装的无障碍服务，并通过 Root 调用模块的 `a11yctl` 命令切换及保存服务状态。APK 内置当前版本的 Magisk 模块，首次启动时会自动检测、安装或更新模块。
 
@@ -16,7 +16,7 @@
 .\build.ps1
 ```
 
-然后在 Magisk 应用中安装 `dist/magisk-accessibility-manager-v1.0.2.zip` 并重启。不要在 Magisk 中选择 Android 应用的 APK。模块要求 Magisk 20.4 或更高版本，建议 Android 8.0 或更高版本。
+然后在 Magisk 应用中安装 `dist/magisk-accessibility-manager-v1.0.3.zip` 并重启。不要在 Magisk 中选择 Android 应用的 APK。模块要求 Magisk 20.4 或更高版本，建议 Android 8.0 或更高版本。
 
 ### Android 管理应用
 
@@ -79,7 +79,7 @@ a11yctl capture              用当前已启用服务覆盖持久配置
 
 - `USER_ID=auto`：管理前台 Android 用户，也可以指定数字用户 ID。
 - `BOOT_DELAY=10`：系统报告启动完成后延迟多少秒再应用配置。
-- `WATCH_INTERVAL=0`：周期性恢复间隔，单位为秒；`0` 表示仅开机应用一次。
+- `LOCK_WATCH_INTERVAL=3`：锁定服务的检测恢复间隔，单位为秒；`0` 表示仅在开机时恢复。
 - `MODE=ensure`：保留其他服务，仅补齐配置项。
 - `MODE=exact`：只保留配置项。为避免误操作，空列表默认不能用于此模式。
 - `ALLOW_EMPTY_EXACT=0`：设为 `1` 后允许 `exact` 模式关闭所有无障碍服务。

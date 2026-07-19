@@ -4,8 +4,8 @@ USER_ID=auto
 # Android 启动完成后等待的秒数。
 BOOT_DELAY=10
 
-# 每隔 N 秒重新应用配置。0 表示仅在开机时应用一次。
-WATCH_INTERVAL=0
+# 每隔 N 秒检测并恢复锁定的服务。0 表示仅在开机时恢复。
+LOCK_WATCH_INTERVAL=3
 
 # ensure：启用配置中的服务，并保留其他已启用服务。
 # exact：仅启用配置中的服务。除非 ALLOW_EMPTY_EXACT=1，否则拒绝空列表。

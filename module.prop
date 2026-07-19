@@ -1,6 +1,6 @@
 id=accessibility_manager
 name=无障碍管理
-version=v1.0.2
-versionCode=10002
+version=v1.0.3
+versionCode=10003
 author=Accessibility Manager
-description=管理并在开机后恢复 Android 无障碍服务，提供安全的命令行操作。
+description=管理并自动恢复被关闭的 Android 无障碍服务，提供安全的命令行操作。
