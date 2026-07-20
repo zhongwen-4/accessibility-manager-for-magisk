@@ -602,11 +602,6 @@ private fun AccessibilityManagerScreen(
                                             R.string.search_services
                                         },
                                     ),
-                                    modifier = if (serviceSearchVisible) {
-                                        Modifier
-                                    } else {
-                                        Modifier.offset(x = 10.dp)
-                                    },
                                 )
                             }
                         }
@@ -806,6 +801,7 @@ private fun ServicesPage(
                             Icon(
                                 imageVector = Icons.Rounded.Search,
                                 contentDescription = null,
+                                modifier = Modifier.offset(x = 10.dp),
                             )
                         },
                         trailingIcon = {
