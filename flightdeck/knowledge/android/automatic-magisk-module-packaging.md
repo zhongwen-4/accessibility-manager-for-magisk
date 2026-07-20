@@ -7,6 +7,10 @@ READ WHEN: before any Android manager release or any change to module packaging,
 
 The Android manager carries `accessibility-manager-module.zip` as a generated asset. Do not maintain a second hand-copied module tree inside `app/`: `app/build.gradle` owns the explicit canonical file list and creates the ZIP during `preBuild`.
 
+There are intentionally two package shapes. The module embedded in the manager APK contains only canonical module files and `install-manager.sh`; it must never contain `manager.apk`, or the APK and module would recursively package each other. The standalone flashable ZIP is built afterward and adds the already-built manager APK as root-level `manager.apk`.
+
+During standalone installation, `customize.sh` invokes `install-manager.sh`. The script copies the APK from the protected module directory to `/data/local/tmp`, fixes its permissions and SELinux context, and calls `pm install -r`. On success it deletes the module copy so boot does not reinstall it. If Android has not completed boot or installation fails, the APK remains and `service.sh` retries after boot on subsequent starts.
+
 `BuildConfig.BUNDLED_MODULE_VERSION_CODE` must come from the root `module.prop`. Runtime installation compares it with both `/data/adb/modules/accessibility_manager/module.prop` and `/data/adb/modules_update/accessibility_manager/module.prop`; Magisk and SukiSU Ultra use these same installed and pending directories, so checking the pending directory prevents repeated installs before reboot on either framework.
 
 Respect `/data/adb/modules/accessibility_manager/disable` even when the installed version is old. Automatic installation must not silently reverse a user's explicit disable action.
@@ -18,6 +22,8 @@ The Android manager must prefer `ksud` when it is available, checking the shell 
 Before delivery, verify all of the following:
 
 - the generated module ZIP passes a full archive test;
+- the standalone ZIP contains root-level `manager.apk`, while the APK's embedded module does not;
+- the standalone `manager.apk` SHA-256 matches the manager APK built in the same run;
 - `.gitattributes` keeps every Magisk shell entry on LF line endings after a Windows checkout;
 - the APK contains `assets/accessibility-manager-module.zip` with the same SHA-256 as the generated ZIP;
 - unit tests and Android Lint pass;
@@ -26,4 +32,4 @@ Before delivery, verify all of the following:
 
 The `构建管理器` GitHub Actions workflow automates the archive, embedded-asset hash, unit test, shell regression, Lint, APK signature, and artifact checks on every main-branch push and pull request. A rooted device remains required for the final installation and behavior check.
 
-The separate `打包模块` workflow runs for module-related changes. It uses `build.ps1` as the canonical standalone packager, rejects missing or extra ZIP entries and CRLF shell files, rebuilds twice to prove reproducibility, and uploads the versioned Magisk ZIP.
+The separate `打包模块` workflow runs for module and manager changes. It builds and tests the manager first, passes that APK to `build.ps1`, rejects missing or extra ZIP entries and CRLF shell files, rebuilds twice to prove reproducibility, and uploads the versioned Root module ZIP.

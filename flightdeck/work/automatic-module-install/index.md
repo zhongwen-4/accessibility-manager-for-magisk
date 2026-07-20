@@ -39,8 +39,11 @@ Verified:
 - The manager now treats `services.list` as an explicit lock list; ordinary switches no longer silently change persistent recovery state.
 - Eight manager unit tests pass, Android Lint reports no issues, APK 2.4.0 (8) has a valid v2 signature, and its generated module asset hash matches the embedded asset.
 - Manager 2.5.0 (9) adds unit-tested SukiSU Ultra daemon discovery and installation; all 13 unit tests pass, Lint reports no issues, the APK v2 signature verifies, and the embedded module hash matches.
+- Standalone module v1.0.4 now carries `manager.apk`, installs it during a booted flash, and defers to `service.sh` when Android's package manager is unavailable.
+- The manager installer stages its APK through `/data/local/tmp`; a connected Android device completed the real script with exit code 0, reported manager versionCode 9, and removed the bundled APK after success.
+- Local packaging verified that the standalone manager APK matches the built APK byte-for-byte, the embedded module avoids recursive APK inclusion, and two standalone builds have identical SHA-256.
 
 ## Open questions
 
-- Rooted Magisk and SukiSU Ultra behavior remains unverified because no Android device is connected.
+- A SukiSU Ultra device is connected, but it currently denies Root to the freshly reinstalled manager; full `ksud module install` validation still requires granting that app Root access.
 - Automatic restoration while the manager is closed remains unverified on a rooted device.

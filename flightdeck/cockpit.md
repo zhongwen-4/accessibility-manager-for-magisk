@@ -13,4 +13,4 @@ Focus: Validate the Miuix dashboard, operation log, automatic module installatio
 
 ## Open questions
 
-- No rooted Android device is currently connected for end-to-end validation on Magisk or SukiSU Ultra.
+- A SukiSU Ultra device is connected, but Root authorization for the freshly reinstalled manager is currently denied; no Magisk device is connected.
