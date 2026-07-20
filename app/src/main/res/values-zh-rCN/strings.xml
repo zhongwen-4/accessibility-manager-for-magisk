@@ -2,6 +2,13 @@
 <resources>
     <string name="app_name">无障碍管理</string>
     <string name="refresh">刷新</string>
+    <string name="search_services">搜索服务</string>
+    <string name="close_search">关闭搜索</string>
+    <string name="clear_search">清空搜索</string>
+    <string name="search_services_hint">搜索名称、说明或组件</string>
+    <string name="search_results_summary">%1$d 个匹配结果 · 共 %2$d 个服务</string>
+    <string name="no_search_results_title">没有匹配的服务</string>
+    <string name="no_search_results_message">请尝试其他服务名称、包名或关键词。</string>
     <string name="home">主页</string>
     <string name="services">服务</string>
     <string name="logs">日志</string>

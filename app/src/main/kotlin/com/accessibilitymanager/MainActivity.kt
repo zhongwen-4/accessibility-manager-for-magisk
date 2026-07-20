@@ -38,6 +38,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Article
 import androidx.compose.material.icons.rounded.AccessibilityNew
 import androidx.compose.material.icons.rounded.CheckCircleOutline
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Cottage
 import androidx.compose.material.icons.rounded.DeleteSweep
@@ -46,6 +47,7 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.LockOpen
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -77,6 +79,7 @@ import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.InputField
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.NavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationBarItem
@@ -523,6 +526,8 @@ private fun AccessibilityManagerScreen(
     onClearLogs: () -> Unit,
 ) {
     var selectedPage by remember { mutableStateOf(ManagerPage.HOME) }
+    var serviceSearchVisible by rememberSaveable { mutableStateOf(false) }
+    var serviceSearchQuery by rememberSaveable { mutableStateOf("") }
     val homeScrollBehavior = MiuixScrollBehavior()
     val servicesScrollBehavior = MiuixScrollBehavior()
     val logsScrollBehavior = MiuixScrollBehavior()
@@ -556,14 +561,39 @@ private fun AccessibilityManagerScreen(
                                 )
                             }
                         }
-                    } else if (state.refreshing) {
-                        CircularProgressIndicator(size = 24.dp)
                     } else {
-                        IconButton(onClick = onRefresh) {
-                            Icon(
-                                imageVector = Icons.Rounded.Refresh,
-                                contentDescription = stringResource(R.string.refresh),
-                            )
+                        if (selectedPage == ManagerPage.SERVICES) {
+                            IconButton(
+                                onClick = {
+                                    serviceSearchVisible = !serviceSearchVisible
+                                    if (!serviceSearchVisible) serviceSearchQuery = ""
+                                },
+                            ) {
+                                Icon(
+                                    imageVector = if (serviceSearchVisible) {
+                                        Icons.Rounded.Close
+                                    } else {
+                                        Icons.Rounded.Search
+                                    },
+                                    contentDescription = stringResource(
+                                        if (serviceSearchVisible) {
+                                            R.string.close_search
+                                        } else {
+                                            R.string.search_services
+                                        },
+                                    ),
+                                )
+                            }
+                        }
+                        if (state.refreshing) {
+                            CircularProgressIndicator(size = 24.dp)
+                        } else {
+                            IconButton(onClick = onRefresh) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Refresh,
+                                    contentDescription = stringResource(R.string.refresh),
+                                )
+                            }
                         }
                     }
                 },
@@ -610,6 +640,9 @@ private fun AccessibilityManagerScreen(
                 innerPadding = innerPadding,
                 state = state,
                 controlsEnabled = controlsEnabled,
+                searchVisible = serviceSearchVisible,
+                searchQuery = serviceSearchQuery,
+                onSearchQueryChange = { serviceSearchQuery = it },
                 onToggle = onToggle,
                 onSetLocked = onSetLocked,
                 onAction = onAction,
@@ -668,17 +701,40 @@ private fun ServicesPage(
     innerPadding: PaddingValues,
     state: HomeState,
     controlsEnabled: Boolean,
+    searchVisible: Boolean,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
     onToggle: (ServiceUiModel, Boolean) -> Unit,
     onSetLocked: (ServiceUiModel, Boolean) -> Unit,
     onAction: (StateAction) -> Unit,
     scrollBehavior: ScrollBehavior,
 ) {
-    val summary = pluralStringResource(
-        R.plurals.services_summary,
-        state.services.size,
-        state.services.size,
-        state.services.count { it.enabled },
-    )
+    val normalizedQuery = searchQuery.trim()
+    val filteredServices = remember(state.services, normalizedQuery) {
+        if (normalizedQuery.isEmpty()) {
+            state.services
+        } else {
+            state.services.filter { service ->
+                service.label.contains(normalizedQuery, ignoreCase = true) ||
+                    service.description.contains(normalizedQuery, ignoreCase = true) ||
+                    service.componentName.contains(normalizedQuery, ignoreCase = true)
+            }
+        }
+    }
+    val summary = if (normalizedQuery.isEmpty()) {
+        pluralStringResource(
+            R.plurals.services_summary,
+            state.services.size,
+            state.services.size,
+            state.services.count { it.enabled },
+        )
+    } else {
+        stringResource(
+            R.string.search_results_summary,
+            filteredServices.size,
+            state.services.size,
+        )
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -691,6 +747,52 @@ private fun ServicesPage(
         state.moduleNotice?.let { notice ->
             item(key = "module-notice") {
                 ModuleNoticeCard(notice = notice, onAction = onAction)
+            }
+        }
+
+        if (searchVisible) {
+            item(key = "service-search") {
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    InputField(
+                        query = searchQuery,
+                        onQueryChange = onSearchQueryChange,
+                        onSearch = { },
+                        expanded = true,
+                        onExpandedChange = { },
+                        label = stringResource(R.string.search_services_hint),
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Rounded.Search,
+                                contentDescription = null,
+                            )
+                        },
+                        trailingIcon = if (searchQuery.isEmpty()) {
+                            null
+                        } else {
+                            {
+                                IconButton(onClick = { onSearchQueryChange("") }) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Close,
+                                        contentDescription = stringResource(R.string.clear_search),
+                                    )
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    if (searchQuery.isEmpty()) {
+                        Text(
+                            text = stringResource(R.string.search_services_hint),
+                            modifier = Modifier
+                                .align(Alignment.CenterStart)
+                                .padding(start = 60.dp, end = 60.dp),
+                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                            style = MiuixTheme.textStyles.body1,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
             }
         }
 
@@ -720,6 +822,13 @@ private fun ServicesPage(
                             message = stringResource(R.string.no_services_message),
                         )
                     }
+                } else if (filteredServices.isEmpty()) {
+                    item(key = "services-search-empty") {
+                        ListStatusContent(
+                            title = stringResource(R.string.no_search_results_title),
+                            message = stringResource(R.string.no_search_results_message),
+                        )
+                    }
                 } else {
                     item(key = "summary") {
                         Text(
@@ -729,7 +838,7 @@ private fun ServicesPage(
                             style = MiuixTheme.textStyles.body1,
                         )
                     }
-                    items(state.services, key = { it.componentName }) { service ->
+                    items(filteredServices, key = { it.componentName }) { service ->
                         ServiceRow(
                             service = service,
                             controlsEnabled = controlsEnabled,
