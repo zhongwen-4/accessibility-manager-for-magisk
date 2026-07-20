@@ -9,6 +9,15 @@
     <string name="search_results_summary">%1$d matches · %2$d services total</string>
     <string name="no_search_results_title">No matching services</string>
     <string name="no_search_results_message">Try a different service name, package, or keyword.</string>
+    <string name="filter_services">Filter services</string>
+    <string name="filter_application_type">Application type</string>
+    <string name="filter_system_apps">System applications</string>
+    <string name="filter_user_apps">User applications</string>
+    <string name="filter_service_state">Service state</string>
+    <string name="filter_disabled">Disabled</string>
+    <string name="filter_enabled">Enabled</string>
+    <string name="reset_filters">Reset</string>
+    <string name="done">Done</string>
     <string name="home">Home</string>
     <string name="services">Services</string>
     <string name="logs">Logs</string>

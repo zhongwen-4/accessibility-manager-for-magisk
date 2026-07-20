@@ -9,6 +9,7 @@ public final class AccessibilityServiceItem {
     private final String description;
     private final String componentName;
     private final Drawable icon;
+    private final boolean systemApp;
     private boolean enabled;
     private boolean pending;
 
@@ -17,12 +18,14 @@ public final class AccessibilityServiceItem {
             String description,
             String componentName,
             Drawable icon,
+            boolean systemApp,
             boolean enabled
     ) {
         this.label = label;
         this.description = description;
         this.componentName = componentName;
         this.icon = icon;
+        this.systemApp = systemApp;
         this.enabled = enabled;
     }
 
@@ -40,6 +43,10 @@ public final class AccessibilityServiceItem {
 
     public Drawable getIcon() {
         return icon;
+    }
+
+    public boolean isSystemApp() {
+        return systemApp;
     }
 
     public boolean isEnabled() {

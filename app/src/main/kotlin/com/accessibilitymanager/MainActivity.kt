@@ -16,6 +16,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.annotation.StringRes
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,6 +44,7 @@ import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Cottage
 import androidx.compose.material.icons.rounded.DeleteSweep
 import androidx.compose.material.icons.rounded.ErrorOutline
+import androidx.compose.material.icons.rounded.FilterList
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.LockOpen
@@ -62,6 +64,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -76,6 +79,7 @@ import com.accessibilitymanager.root.RootModuleInstaller
 import com.accessibilitymanager.root.RootServiceManager
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
+import top.yukonga.miuix.kmp.basic.Checkbox
 import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -231,6 +235,7 @@ class MainActivity : ComponentActivity() {
                         description = service.description,
                         componentName = service.componentName,
                         icon = service.icon,
+                        systemApp = service.isSystemApp,
                         enabled = service.isEnabled,
                         locked = service.componentName in lockedServices,
                     )
@@ -503,11 +508,19 @@ private enum class ManagerPage {
     LOGS,
 }
 
+private const val FILTER_SYSTEM_APPS = 1
+private const val FILTER_USER_APPS = 1 shl 1
+private const val FILTER_DISABLED = 1 shl 2
+private const val FILTER_ENABLED = 1 shl 3
+private const val FILTER_APP_TYPE_MASK = FILTER_SYSTEM_APPS or FILTER_USER_APPS
+private const val FILTER_SERVICE_STATE_MASK = FILTER_DISABLED or FILTER_ENABLED
+
 private data class ServiceUiModel(
     val label: String,
     val description: String,
     val componentName: String,
     val icon: Drawable,
+    val systemApp: Boolean,
     val enabled: Boolean,
     val locked: Boolean,
     val pending: Boolean = false,
@@ -528,6 +541,8 @@ private fun AccessibilityManagerScreen(
     var selectedPage by remember { mutableStateOf(ManagerPage.HOME) }
     var serviceSearchVisible by rememberSaveable { mutableStateOf(false) }
     var serviceSearchQuery by rememberSaveable { mutableStateOf("") }
+    var serviceFiltersVisible by rememberSaveable { mutableStateOf(false) }
+    var serviceFilterMask by rememberSaveable { mutableStateOf(0) }
     val homeScrollBehavior = MiuixScrollBehavior()
     val servicesScrollBehavior = MiuixScrollBehavior()
     val logsScrollBehavior = MiuixScrollBehavior()
@@ -566,7 +581,11 @@ private fun AccessibilityManagerScreen(
                             IconButton(
                                 onClick = {
                                     serviceSearchVisible = !serviceSearchVisible
-                                    if (!serviceSearchVisible) serviceSearchQuery = ""
+                                    if (!serviceSearchVisible) {
+                                        serviceSearchQuery = ""
+                                        serviceFiltersVisible = false
+                                        serviceFilterMask = 0
+                                    }
                                 },
                             ) {
                                 Icon(
@@ -643,6 +662,10 @@ private fun AccessibilityManagerScreen(
                 searchVisible = serviceSearchVisible,
                 searchQuery = serviceSearchQuery,
                 onSearchQueryChange = { serviceSearchQuery = it },
+                filtersVisible = serviceFiltersVisible,
+                filterMask = serviceFilterMask,
+                onFiltersVisibleChange = { serviceFiltersVisible = it },
+                onFilterMaskChange = { serviceFilterMask = it },
                 onToggle = onToggle,
                 onSetLocked = onSetLocked,
                 onAction = onAction,
@@ -704,24 +727,36 @@ private fun ServicesPage(
     searchVisible: Boolean,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
+    filtersVisible: Boolean,
+    filterMask: Int,
+    onFiltersVisibleChange: (Boolean) -> Unit,
+    onFilterMaskChange: (Int) -> Unit,
     onToggle: (ServiceUiModel, Boolean) -> Unit,
     onSetLocked: (ServiceUiModel, Boolean) -> Unit,
     onAction: (StateAction) -> Unit,
     scrollBehavior: ScrollBehavior,
 ) {
     val normalizedQuery = searchQuery.trim()
-    val filteredServices = remember(state.services, normalizedQuery) {
-        if (normalizedQuery.isEmpty()) {
-            state.services
-        } else {
-            state.services.filter { service ->
+    val filteredServices = remember(state.services, normalizedQuery, filterMask) {
+        val appTypeFilter = filterMask and FILTER_APP_TYPE_MASK
+        val stateFilter = filterMask and FILTER_SERVICE_STATE_MASK
+        state.services.filter { service ->
+            val matchesQuery = normalizedQuery.isEmpty() ||
                 service.label.contains(normalizedQuery, ignoreCase = true) ||
-                    service.description.contains(normalizedQuery, ignoreCase = true) ||
-                    service.componentName.contains(normalizedQuery, ignoreCase = true)
-            }
+                service.description.contains(normalizedQuery, ignoreCase = true) ||
+                service.componentName.contains(normalizedQuery, ignoreCase = true)
+            val matchesAppType = appTypeFilter == 0 ||
+                appTypeFilter == FILTER_APP_TYPE_MASK ||
+                (service.systemApp && appTypeFilter == FILTER_SYSTEM_APPS) ||
+                (!service.systemApp && appTypeFilter == FILTER_USER_APPS)
+            val matchesState = stateFilter == 0 ||
+                stateFilter == FILTER_SERVICE_STATE_MASK ||
+                (service.enabled && stateFilter == FILTER_ENABLED) ||
+                (!service.enabled && stateFilter == FILTER_DISABLED)
+            matchesQuery && matchesAppType && matchesState
         }
     }
-    val summary = if (normalizedQuery.isEmpty()) {
+    val summary = if (normalizedQuery.isEmpty() && filterMask == 0) {
         pluralStringResource(
             R.plurals.services_summary,
             state.services.size,
@@ -766,14 +801,27 @@ private fun ServicesPage(
                                 contentDescription = null,
                             )
                         },
-                        trailingIcon = if (searchQuery.isEmpty()) {
-                            null
-                        } else {
-                            {
-                                IconButton(onClick = { onSearchQueryChange("") }) {
+                        trailingIcon = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { onSearchQueryChange("") }) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Close,
+                                            contentDescription = stringResource(R.string.clear_search),
+                                        )
+                                    }
+                                }
+                                IconButton(
+                                    onClick = { onFiltersVisibleChange(!filtersVisible) },
+                                ) {
                                     Icon(
-                                        imageVector = Icons.Rounded.Close,
-                                        contentDescription = stringResource(R.string.clear_search),
+                                        imageVector = Icons.Rounded.FilterList,
+                                        contentDescription = stringResource(R.string.filter_services),
+                                        tint = if (filterMask != 0) {
+                                            MiuixTheme.colorScheme.primary
+                                        } else {
+                                            MiuixTheme.colorScheme.onSurface
+                                        },
                                     )
                                 }
                             }
@@ -785,13 +833,23 @@ private fun ServicesPage(
                             text = stringResource(R.string.search_services_hint),
                             modifier = Modifier
                                 .align(Alignment.CenterStart)
-                                .padding(start = 60.dp, end = 60.dp),
+                                .padding(start = 60.dp, end = 108.dp),
                             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                             style = MiuixTheme.textStyles.body1,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
+                }
+            }
+
+            if (filtersVisible) {
+                item(key = "service-filters") {
+                    ServiceFilterPanel(
+                        filterMask = filterMask,
+                        onFilterMaskChange = onFilterMaskChange,
+                        onDone = { onFiltersVisibleChange(false) },
+                    )
                 }
             }
         }
@@ -849,6 +907,108 @@ private fun ServicesPage(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ServiceFilterPanel(
+    filterMask: Int,
+    onFilterMaskChange: (Int) -> Unit,
+    onDone: () -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        insideMargin = PaddingValues(0.dp),
+    ) {
+        Column(modifier = Modifier.padding(vertical = 10.dp)) {
+            FilterSectionTitle(stringResource(R.string.filter_application_type))
+            ServiceFilterOption(
+                title = stringResource(R.string.filter_system_apps),
+                checked = filterMask and FILTER_SYSTEM_APPS != 0,
+                onCheckedChange = {
+                    onFilterMaskChange(filterMask xor FILTER_SYSTEM_APPS)
+                },
+            )
+            ServiceFilterOption(
+                title = stringResource(R.string.filter_user_apps),
+                checked = filterMask and FILTER_USER_APPS != 0,
+                onCheckedChange = {
+                    onFilterMaskChange(filterMask xor FILTER_USER_APPS)
+                },
+            )
+            Spacer(Modifier.height(6.dp))
+            FilterSectionTitle(stringResource(R.string.filter_service_state))
+            ServiceFilterOption(
+                title = stringResource(R.string.filter_disabled),
+                checked = filterMask and FILTER_DISABLED != 0,
+                onCheckedChange = {
+                    onFilterMaskChange(filterMask xor FILTER_DISABLED)
+                },
+            )
+            ServiceFilterOption(
+                title = stringResource(R.string.filter_enabled),
+                checked = filterMask and FILTER_ENABLED != 0,
+                onCheckedChange = {
+                    onFilterMaskChange(filterMask xor FILTER_ENABLED)
+                },
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (filterMask != 0) {
+                    TextButton(
+                        text = stringResource(R.string.reset_filters),
+                        onClick = { onFilterMaskChange(0) },
+                    )
+                    Spacer(Modifier.width(8.dp))
+                }
+                TextButton(
+                    text = stringResource(R.string.done),
+                    onClick = onDone,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FilterSectionTitle(title: String) {
+    Text(
+        text = title,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+        style = MiuixTheme.textStyles.body2,
+        fontWeight = FontWeight.Medium,
+    )
+}
+
+@Composable
+private fun ServiceFilterOption(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onCheckedChange)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = title,
+            modifier = Modifier.weight(1f),
+            color = MiuixTheme.colorScheme.onSurface,
+            style = MiuixTheme.textStyles.body1,
+        )
+        Checkbox(
+            state = ToggleableState(checked),
+            onClick = onCheckedChange,
+        )
     }
 }
 

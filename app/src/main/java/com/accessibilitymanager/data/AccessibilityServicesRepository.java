@@ -3,6 +3,7 @@ package com.accessibilitymanager.data;
 import android.accessibilityservice.AccessibilityServiceInfo;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.drawable.Drawable;
@@ -61,11 +62,16 @@ public final class AccessibilityServicesRepository {
             }
             Drawable icon = resolveInfo.loadIcon(packageManager);
             String description = loadDescription(service);
+            int applicationFlags = resolveInfo.serviceInfo.applicationInfo.flags;
+            boolean systemApp = (applicationFlags & (
+                    ApplicationInfo.FLAG_SYSTEM | ApplicationInfo.FLAG_UPDATED_SYSTEM_APP
+            )) != 0;
             result.add(new AccessibilityServiceItem(
                     label,
                     description,
                     component.flattenToString(),
                     icon,
+                    systemApp,
                     enabledComponents.contains(component)
             ));
         }
