@@ -1369,14 +1369,14 @@ private fun ServiceRow(
                     bitmap = bitmap,
                     contentDescription = null,
                     modifier = Modifier
-                        .offset(x = 8.dp)
+                        .offset(x = 10.dp)
                         .size(44.dp),
                 )
                 Spacer(Modifier.width(14.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = service.label,
-                        modifier = Modifier.offset(x = 4.dp),
+                        modifier = Modifier.offset(x = 6.dp),
                         color = MiuixTheme.colorScheme.onSurface,
                         style = MiuixTheme.textStyles.headline1,
                         fontWeight = FontWeight.Medium,
@@ -1388,6 +1388,7 @@ private fun ServiceRow(
                         text = stringResource(
                             if (expanded) R.string.tap_to_collapse else R.string.tap_for_description,
                         ),
+                        modifier = Modifier.offset(x = 2.dp),
                         color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                         style = MiuixTheme.textStyles.body2,
                         maxLines = 1,
