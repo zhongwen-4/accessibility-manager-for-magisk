@@ -6,7 +6,9 @@
     <string name="close_search">关闭搜索</string>
     <string name="clear_search">清空搜索</string>
     <string name="search_services_hint">搜索名称、说明或组件</string>
-    <string name="search_results_summary">%1$d 个匹配结果 · 共 %2$d 个服务</string>
+    <plurals name="search_results_summary">
+        <item quantity="other">%1$d 个匹配结果 · 共 %2$d 个服务</item>
+    </plurals>
     <string name="no_search_results_title">没有匹配的服务</string>
     <string name="no_search_results_message">请尝试其他服务名称、包名或关键词。</string>
     <string name="filter_services">过滤服务</string>

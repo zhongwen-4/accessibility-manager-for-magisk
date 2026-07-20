@@ -52,6 +52,7 @@ import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -542,7 +543,7 @@ private fun AccessibilityManagerScreen(
     var serviceSearchVisible by rememberSaveable { mutableStateOf(false) }
     var serviceSearchQuery by rememberSaveable { mutableStateOf("") }
     var serviceFiltersVisible by rememberSaveable { mutableStateOf(false) }
-    var serviceFilterMask by rememberSaveable { mutableStateOf(0) }
+    var serviceFilterMask by rememberSaveable { mutableIntStateOf(0) }
     val homeScrollBehavior = MiuixScrollBehavior()
     val servicesScrollBehavior = MiuixScrollBehavior()
     val logsScrollBehavior = MiuixScrollBehavior()
@@ -764,8 +765,9 @@ private fun ServicesPage(
             state.services.count { it.enabled },
         )
     } else {
-        stringResource(
-            R.string.search_results_summary,
+        pluralStringResource(
+            R.plurals.search_results_summary,
+            filteredServices.size,
             filteredServices.size,
             state.services.size,
         )

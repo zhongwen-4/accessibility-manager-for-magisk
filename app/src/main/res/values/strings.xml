@@ -6,7 +6,10 @@
     <string name="close_search">Close search</string>
     <string name="clear_search">Clear search</string>
     <string name="search_services_hint">Search by name, description, or component</string>
-    <string name="search_results_summary">%1$d matches · %2$d services total</string>
+    <plurals name="search_results_summary">
+        <item quantity="one">%1$d match · %2$d services total</item>
+        <item quantity="other">%1$d matches · %2$d services total</item>
+    </plurals>
     <string name="no_search_results_title">No matching services</string>
     <string name="no_search_results_message">Try a different service name, package, or keyword.</string>
     <string name="filter_services">Filter services</string>
