@@ -1369,14 +1369,14 @@ private fun ServiceRow(
                     bitmap = bitmap,
                     contentDescription = null,
                     modifier = Modifier
-                        .offset(x = 7.dp)
+                        .offset(x = 8.dp)
                         .size(44.dp),
                 )
                 Spacer(Modifier.width(14.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = service.label,
-                        modifier = Modifier.offset(x = 2.dp),
+                        modifier = Modifier.offset(x = 4.dp),
                         color = MiuixTheme.colorScheme.onSurface,
                         style = MiuixTheme.textStyles.headline1,
                         fontWeight = FontWeight.Medium,
