@@ -17,6 +17,7 @@ def moduleFiles = [
         'service.sh',
         'action.sh',
         'uninstall.sh',
+        'install-manager.sh',
         'config.conf.example',
         'services.list.example',
         'system/bin/a11yctl',

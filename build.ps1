@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
-    [string]$OutputDirectory = (Join-Path $PSScriptRoot 'dist')
+    [string]$OutputDirectory = (Join-Path $PSScriptRoot 'dist'),
+    [string]$ManagerApk = (Join-Path $PSScriptRoot 'app\build\outputs\apk\debug\app-debug.apk')
 )
 
 $ErrorActionPreference = 'Stop'
@@ -12,6 +13,7 @@ $requiredFiles = @(
     'service.sh',
     'action.sh',
     'uninstall.sh',
+    'install-manager.sh',
     'config.conf.example',
     'services.list.example',
     'system/bin/a11yctl',
@@ -24,6 +26,21 @@ foreach ($relativePath in $requiredFiles) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         throw "Missing module file: $relativePath"
     }
+}
+
+if (-not (Test-Path -LiteralPath $ManagerApk -PathType Leaf)) {
+    throw "Manager APK not found: $ManagerApk. Build it with .\gradlew.bat assembleDebug first."
+}
+
+$archiveFiles = foreach ($relativePath in $requiredFiles) {
+    [PSCustomObject]@{
+        Source = Join-Path $PSScriptRoot $relativePath
+        Entry = $relativePath.Replace('\', '/')
+    }
+}
+$archiveFiles += [PSCustomObject]@{
+    Source = (Resolve-Path -LiteralPath $ManagerApk).Path
+    Entry = 'manager.apk'
 }
 
 $moduleProperties = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'module.prop') -Encoding UTF8
@@ -46,9 +63,9 @@ $archive = [System.IO.Compression.ZipFile]::Open(
 )
 
 try {
-    foreach ($relativePath in $requiredFiles) {
-        $sourcePath = Join-Path $PSScriptRoot $relativePath
-        $entryName = $relativePath.Replace('\', '/')
+    foreach ($archiveFile in $archiveFiles) {
+        $sourcePath = $archiveFile.Source
+        $entryName = $archiveFile.Entry
         $entry = $archive.CreateEntry(
             $entryName,
             [System.IO.Compression.CompressionLevel]::Optimal

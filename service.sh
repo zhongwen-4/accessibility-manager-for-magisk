@@ -23,6 +23,14 @@ until [ "$(getprop sys.boot_completed)" = "1" ]; do
   sleep 2
 done
 
+if [ -r "$MODDIR/manager.apk" ]; then
+  if sh "$MODDIR/install-manager.sh"; then
+    log_message "无障碍管理器安装完成"
+  else
+    log_message "无障碍管理器安装失败，将在下次开机重试"
+  fi
+fi
+
 boot_delay=$(config_value BOOT_DELAY 10)
 case "$boot_delay" in
   ''|*[!0-9]*) boot_delay=10 ;;

@@ -40,10 +40,12 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: 设置脚本执行权限
-        run: chmod +x gradlew tests/test-a11yctl.sh
+        run: chmod +x gradlew tests/test-a11yctl.sh tests/test-install-manager.sh
 
       - name: 运行模块回归测试
-        run: ./tests/test-a11yctl.sh
+        run: |
+          ./tests/test-a11yctl.sh
+          ./tests/test-install-manager.sh
 
       - name: 测试并构建管理器
         run: ./gradlew --no-daemon clean :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
