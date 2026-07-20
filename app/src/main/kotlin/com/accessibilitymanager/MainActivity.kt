@@ -798,11 +798,15 @@ private fun ServicesPage(
                         onExpandedChange = { },
                         label = stringResource(R.string.search_services_hint),
                         leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Rounded.Search,
-                                contentDescription = null,
-                                modifier = Modifier.offset(x = 10.dp),
-                            )
+                            Box(modifier = Modifier.size(width = 33.dp, height = 24.dp)) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Search,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .offset(x = 10.dp)
+                                        .size(24.dp),
+                                )
+                            }
                         },
                         trailingIcon = {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -836,7 +840,7 @@ private fun ServicesPage(
                             text = stringResource(R.string.search_services_hint),
                             modifier = Modifier
                                 .align(Alignment.CenterStart)
-                                .padding(start = 60.dp, end = 108.dp),
+                                .padding(start = 33.dp, end = 108.dp),
                             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                             style = MiuixTheme.textStyles.body1,
                             maxLines = 1,
