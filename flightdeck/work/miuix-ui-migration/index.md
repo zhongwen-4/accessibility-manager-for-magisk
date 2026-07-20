@@ -39,6 +39,8 @@ Verified:
 - Service cards now expand on tap to show the app-provided accessibility description and component name, with localized fallback text when no description is declared.
 - Each service row now has an independent lock control for automatic restoration; locked services cannot be switched off until unlocked.
 - Manager version advanced to 2.4.0 (8); eight unit tests and Android Lint pass.
+- The services page now exposes a Miuix search action and inline query field. Filtering matches localized service labels, accessibility descriptions, package names, and full component names without changing the underlying enabled or locked state.
+- Connected-device validation confirmed the empty search hint, live filtering, matching-result count, clear action, and preserved service controls. Manager version advanced to 2.6.0 (10); 13 unit tests and Android Lint pass.
 
 ## Open questions
 
