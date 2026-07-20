@@ -16,7 +16,7 @@
 .\build.ps1
 ```
 
-然后在 Magisk 或 SukiSU Ultra 管理器中安装 `dist/magisk-accessibility-manager-v1.0.4.zip` 并重启。独立模块包内含管理器 APK：系统已启动时会在刷入阶段安装，否则在首次开机后自动补装。模块要求 Magisk 20.4 或兼容当前模块格式的 SukiSU Ultra，建议 Android 8.0 或更高版本。
+然后在 Magisk 或 SukiSU Ultra 管理器中安装 `dist/magisk-accessibility-manager-v1.0.5.zip` 并重启。独立模块包内含管理器 APK：系统已启动时会在刷入阶段安装，否则在首次开机后自动补装。模块要求 Magisk 20.4 或兼容当前模块格式的 SukiSU Ultra，建议 Android 8.0 或更高版本。
 
 ### Android 管理应用
 

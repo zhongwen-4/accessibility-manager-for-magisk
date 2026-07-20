@@ -1,6 +1,6 @@
 id=accessibility_manager
 name=无障碍管理
-version=v1.0.4
-versionCode=10004
-author=Accessibility Manager
+version=v1.0.5
+versionCode=10005
+author=zhongwen-4
 description=自动安装管理器，并管理和恢复被关闭的 Android 无障碍服务。
