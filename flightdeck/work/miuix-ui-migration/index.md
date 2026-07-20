@@ -41,6 +41,8 @@ Verified:
 - Manager version advanced to 2.4.0 (8); eight unit tests and Android Lint pass.
 - The services page now exposes a Miuix search action and inline query field. Filtering matches localized service labels, accessibility descriptions, package names, and full component names without changing the underlying enabled or locked state.
 - Connected-device validation confirmed the empty search hint, live filtering, matching-result count, clear action, and preserved service controls. Manager version advanced to 2.6.0 (10); 13 unit tests and Android Lint pass.
+- Search now includes an inline filter action for system/user applications and disabled/enabled services. Selections are ORed within each category and ANDed across application type and service state; an empty or fully selected category is unrestricted.
+- Connected-device validation confirmed the filter panel, enabled-only result reduction, active filter tint, result summary, and unchanged lock/switch controls. Manager version advanced to 2.7.0 (11); 13 unit tests pass and Android Lint reports no issues.
 
 ## Open questions
 
