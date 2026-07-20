@@ -1369,7 +1369,7 @@ private fun ServiceRow(
                     bitmap = bitmap,
                     contentDescription = null,
                     modifier = Modifier
-                        .offset(x = 5.dp)
+                        .offset(x = 7.dp)
                         .size(44.dp),
                 )
                 Spacer(Modifier.width(14.dp))
