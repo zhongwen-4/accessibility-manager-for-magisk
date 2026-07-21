@@ -18,7 +18,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import dev.chrisbanes.haze.HazeProgressive
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
@@ -73,13 +72,7 @@ internal fun FrostedBottomNavigationBar(
     val surface = MiuixTheme.colorScheme.surface
     val style = remember(surface, spec) { frostHazeStyle(surface, spec) }
     val effectModifier = if (spec.enabled) {
-        modifier.hazeEffect(state = state, style = style) {
-            progressive = HazeProgressive.verticalGradient(
-                startIntensity = 0.72f,
-                endIntensity = 1f,
-                preferPerformance = true,
-            )
-        }
+        modifier.hazeEffect(state = state, style = style)
     } else {
         modifier
     }
@@ -140,13 +133,7 @@ internal fun BottomBarFrostPreview(frost: Float) {
                     .align(Alignment.CenterEnd)
                     .fillMaxHeight()
                     .fillMaxWidth(0.58f)
-                    .hazeEffect(state = state, style = style) {
-                        progressive = HazeProgressive.horizontalGradient(
-                            startIntensity = 0.2f,
-                            endIntensity = 1f,
-                            preferPerformance = true,
-                        )
-                    },
+                    .hazeEffect(state = state, style = style),
             )
         }
     }
