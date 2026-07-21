@@ -14,3 +14,4 @@ Focus: Validate the compiled continuous bottom-bar frost adjustment, Miuix dashb
 ## Open questions
 
 - A SukiSU Ultra device is connected, but Root authorization for the freshly reinstalled manager is currently denied; no Magisk device is connected.
+- The K70-labelled ADB target runs Android 12 / API 32 with MuMu components and exposes only two registered accessibility services; connect the physical K70 host system before treating its service count as genuine-device validation.

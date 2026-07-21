@@ -19,6 +19,8 @@ Install `app/build/outputs/apk/debug/app-debug.apk` on a rooted device and confi
 
 ## Read if
 
+- `flightdeck/knowledge/android/accessibility-service-enumeration-diagnostics.md` — when a connected device appears to expose fewer accessibility services than expected
+
 ## Progress
 
 Done:
@@ -47,6 +49,7 @@ Verified:
 - Connected-device validation confirmed the filter panel, enabled-only result reduction, active filter tint, result summary, and unchanged lock/switch controls. Manager version advanced to 2.7.0 (11); 13 unit tests pass and Android Lint reports no issues.
 - Removed the nonzero floors from bottom-bar blur, translucency, noise, and fallback tint so the settings slider now interpolates continuously from no frost to the existing strongest state; added endpoint coverage for 0%, 1%, and 25% plus a 1% near-zero case.
 - Locally ran the CI-equivalent clean, unit-test, Android Lint, and debug assembly tasks successfully (56 tasks). Verified manager 2.9.1 (24), the APK's v2 signature, and byte-identical SHA-256 values for the generated and embedded Root module ZIP.
+- Diagnosed the connected K70-labelled ADB target: Android `dumpsys accessibility`, PackageManager, and the manager all report the same two registered services. The target runs Android 12 / API 32 with MuMu components despite a physical K70 launching on Android 14, so it is not suitable evidence of a manager enumeration bug.
 
 ## Open questions
 
@@ -54,3 +57,4 @@ Verified:
 - Dashboard screenshots could not be captured because no Android device or emulator is connected.
 - Log persistence, clipboard output, and clear behavior require connected-device validation.
 - The shell regression test could not be rerun in this Windows environment because no Bash or WSL distribution is installed.
+- The current K70-labelled ADB target appears to be a MuMu virtual profile rather than the physical K70 host system; genuine-device validation requires connecting to the host Android system or a known physical device.
