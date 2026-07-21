@@ -78,6 +78,11 @@ import com.accessibilitymanager.data.ManagerLogLevel
 import com.accessibilitymanager.data.ManagerLogStore
 import com.accessibilitymanager.root.RootModuleInstaller
 import com.accessibilitymanager.root.RootServiceManager
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.Checkbox
@@ -552,6 +557,17 @@ private fun AccessibilityManagerScreen(
         ManagerPage.SERVICES -> servicesScrollBehavior
         ManagerPage.LOGS -> logsScrollBehavior
     }
+    val bottomBarHazeState = rememberHazeState()
+    val bottomBarSurface = MiuixTheme.colorScheme.surface
+    val bottomBarGlassStyle = remember(bottomBarSurface) {
+        HazeStyle(
+            backgroundColor = bottomBarSurface,
+            tint = HazeTint(bottomBarSurface.copy(alpha = 0.72f)),
+            blurRadius = 24.dp,
+            noiseFactor = 0.08f,
+            fallbackTint = HazeTint(bottomBarSurface.copy(alpha = 0.94f)),
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -621,7 +637,13 @@ private fun AccessibilityManagerScreen(
             )
         },
         bottomBar = {
-            NavigationBar {
+            NavigationBar(
+                modifier = Modifier.hazeEffect(
+                    state = bottomBarHazeState,
+                    style = bottomBarGlassStyle,
+                ),
+                color = Color.Transparent,
+            ) {
                 NavigationBarItem(
                     modifier = Modifier.weight(1f),
                     selected = selectedPage == ManagerPage.HOME,
@@ -646,38 +668,44 @@ private fun AccessibilityManagerScreen(
             }
         },
     ) { innerPadding ->
-        when (selectedPage) {
-            ManagerPage.HOME -> DashboardPage(
-                innerPadding = innerPadding,
-                state = state,
-                controlsEnabled = controlsEnabled,
-                onOpenServices = { selectedPage = ManagerPage.SERVICES },
-                onAction = onAction,
-                scrollBehavior = homeScrollBehavior,
-            )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .hazeSource(bottomBarHazeState),
+        ) {
+            when (selectedPage) {
+                ManagerPage.HOME -> DashboardPage(
+                    innerPadding = innerPadding,
+                    state = state,
+                    controlsEnabled = controlsEnabled,
+                    onOpenServices = { selectedPage = ManagerPage.SERVICES },
+                    onAction = onAction,
+                    scrollBehavior = homeScrollBehavior,
+                )
 
-            ManagerPage.SERVICES -> ServicesPage(
-                innerPadding = innerPadding,
-                state = state,
-                controlsEnabled = controlsEnabled,
-                searchVisible = serviceSearchVisible,
-                searchQuery = serviceSearchQuery,
-                onSearchQueryChange = { serviceSearchQuery = it },
-                filtersVisible = serviceFiltersVisible,
-                filterMask = serviceFilterMask,
-                onFiltersVisibleChange = { serviceFiltersVisible = it },
-                onFilterMaskChange = { serviceFilterMask = it },
-                onToggle = onToggle,
-                onSetLocked = onSetLocked,
-                onAction = onAction,
-                scrollBehavior = servicesScrollBehavior,
-            )
+                ManagerPage.SERVICES -> ServicesPage(
+                    innerPadding = innerPadding,
+                    state = state,
+                    controlsEnabled = controlsEnabled,
+                    searchVisible = serviceSearchVisible,
+                    searchQuery = serviceSearchQuery,
+                    onSearchQueryChange = { serviceSearchQuery = it },
+                    filtersVisible = serviceFiltersVisible,
+                    filterMask = serviceFilterMask,
+                    onFiltersVisibleChange = { serviceFiltersVisible = it },
+                    onFilterMaskChange = { serviceFilterMask = it },
+                    onToggle = onToggle,
+                    onSetLocked = onSetLocked,
+                    onAction = onAction,
+                    scrollBehavior = servicesScrollBehavior,
+                )
 
-            ManagerPage.LOGS -> LogPage(
-                innerPadding = innerPadding,
-                entries = logEntries,
-                scrollBehavior = logsScrollBehavior,
-            )
+                ManagerPage.LOGS -> LogPage(
+                    innerPadding = innerPadding,
+                    entries = logEntries,
+                    scrollBehavior = logsScrollBehavior,
+                )
+            }
         }
     }
 }

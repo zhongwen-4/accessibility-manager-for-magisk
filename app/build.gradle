@@ -43,8 +43,8 @@ android {
         applicationId 'com.accessibilitymanager'
         minSdk 26
         targetSdk 36
-        versionCode 17
-        versionName '2.7.6'
+        versionCode 18
+        versionName '2.7.7'
 
         buildConfigField 'int', 'BUNDLED_MODULE_VERSION_CODE', bundledModuleVersionCode
         buildConfigField 'String', 'BUNDLED_MODULE_VERSION_NAME', "\"${bundledModuleVersionName}\""
@@ -95,6 +95,7 @@ dependencies {
     implementation 'androidx.compose.foundation:foundation'
     implementation 'androidx.compose.ui:ui'
     implementation 'androidx.compose.ui:ui-tooling-preview'
+    implementation 'dev.chrisbanes.haze:haze:1.7.2'
     implementation 'top.yukonga.miuix.kmp:miuix-android:0.8.8'
 
     debugImplementation 'androidx.compose.ui:ui-tooling'
