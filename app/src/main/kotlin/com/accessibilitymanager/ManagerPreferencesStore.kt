@@ -50,32 +50,3 @@ internal const val DEFAULT_BOTTOM_BAR_FROST = 0.6f
 
 internal fun sanitizeBottomBarFrost(value: Float): Float =
     if (value.isFinite()) value.coerceIn(0f, 1f) else DEFAULT_BOTTOM_BAR_FROST
-
-internal data class BottomBarFrostEffect(
-    val enabled: Boolean,
-    val blurRadiusDp: Float,
-    val tintAlpha: Float,
-    val noiseFactor: Float,
-    val fallbackAlpha: Float,
-)
-
-internal fun bottomBarFrostEffect(value: Float): BottomBarFrostEffect {
-    val frost = sanitizeBottomBarFrost(value)
-    if (frost == 0f) {
-        return BottomBarFrostEffect(
-            enabled = false,
-            blurRadiusDp = 0f,
-            tintAlpha = 1f,
-            noiseFactor = 0f,
-            fallbackAlpha = 1f,
-        )
-    }
-
-    return BottomBarFrostEffect(
-        enabled = true,
-        blurRadiusDp = 8f + (56f * frost),
-        tintAlpha = 0.96f - (0.66f * frost),
-        noiseFactor = 0.18f * frost,
-        fallbackAlpha = 0.98f - (0.33f * frost),
-    )
-}

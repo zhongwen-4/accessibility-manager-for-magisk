@@ -16,7 +16,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.annotation.StringRes
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,7 +35,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Article
 import androidx.compose.material.icons.rounded.AccessibilityNew
@@ -63,7 +61,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -84,10 +81,6 @@ import com.accessibilitymanager.data.ManagerLogLevel
 import com.accessibilitymanager.data.ManagerLogStore
 import com.accessibilitymanager.root.RootModuleInstaller
 import com.accessibilitymanager.root.RootServiceManager
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
@@ -99,7 +92,6 @@ import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.InputField
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
-import top.yukonga.miuix.kmp.basic.NavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationBarItem
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
@@ -622,12 +614,7 @@ private fun AccessibilityManagerScreen(
         ManagerPage.SETTINGS -> settingsScrollBehavior
     }
     val frost = sanitizeBottomBarFrost(bottomBarFrost)
-    val frostEffect = bottomBarFrostEffect(frost)
-    val bottomBarHazeState = rememberHazeState(blurEnabled = frostEffect.enabled)
-    val bottomBarSurface = MiuixTheme.colorScheme.surface
-    val bottomBarGlassStyle = remember(bottomBarSurface, frostEffect) {
-        frostHazeStyle(bottomBarSurface, frostEffect)
-    }
+    val bottomBarHazeState = rememberHazeState(blurEnabled = frost > 0f)
     val refreshAction: @Composable () -> Unit = {
         if (state.refreshing) {
             CircularProgressIndicator(size = 24.dp)
@@ -704,16 +691,9 @@ private fun AccessibilityManagerScreen(
             )
         },
         bottomBar = {
-            NavigationBar(
-                modifier = if (frostEffect.enabled) {
-                    Modifier.hazeEffect(
-                        state = bottomBarHazeState,
-                        style = bottomBarGlassStyle,
-                    )
-                } else {
-                    Modifier
-                },
-                color = if (frostEffect.enabled) Color.Transparent else bottomBarSurface,
+            FrostedBottomNavigationBar(
+                frost = frost,
+                state = bottomBarHazeState,
             ) {
                 NavigationBarItem(
                     modifier = Modifier.weight(1f),
@@ -749,7 +729,7 @@ private fun AccessibilityManagerScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .hazeSource(bottomBarHazeState),
+                .bottomBarFrostSource(frost = frost, state = bottomBarHazeState),
         ) {
             when (selectedPage) {
                 ManagerPage.HOME -> DashboardPage(
@@ -1203,7 +1183,7 @@ private fun SettingsPage(
                                     .fillMaxWidth()
                                     .padding(top = 10.dp),
                             ) {
-                                BottomBarFrostPreview(bottomBarFrost = bottomBarFrost)
+                                BottomBarFrostPreview(frost = bottomBarFrost)
                                 Spacer(Modifier.height(12.dp))
                                 Slider(
                                     value = bottomBarFrost,
@@ -1233,102 +1213,6 @@ private fun SettingsPage(
                 }
             }
         }
-    }
-}
-
-private fun frostHazeStyle(
-    surface: Color,
-    effect: BottomBarFrostEffect,
-): HazeStyle = HazeStyle(
-    backgroundColor = surface,
-    tint = HazeTint(surface.copy(alpha = effect.tintAlpha)),
-    blurRadius = effect.blurRadiusDp.dp,
-    noiseFactor = effect.noiseFactor,
-    fallbackTint = HazeTint(surface.copy(alpha = effect.fallbackAlpha)),
-)
-
-@Composable
-private fun BottomBarFrostPreview(bottomBarFrost: Float) {
-    val effect = bottomBarFrostEffect(bottomBarFrost)
-    val hazeState = rememberHazeState(blurEnabled = effect.enabled)
-    val surface = MiuixTheme.colorScheme.surface
-    val previewBackground = MiuixTheme.colorScheme.surfaceVariant
-    val style = remember(surface, effect) { frostHazeStyle(surface, effect) }
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(72.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(previewBackground),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .hazeSource(hazeState)
-                .padding(horizontal = 14.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(42.dp)
-                    .background(
-                        MiuixTheme.colorScheme.primary,
-                        RoundedCornerShape(8.dp),
-                    ),
-            )
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(28.dp)
-                    .background(
-                        MiuixTheme.colorScheme.onSurface.copy(alpha = 0.55f),
-                        RoundedCornerShape(8.dp),
-                    ),
-            )
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(48.dp)
-                    .background(
-                        MiuixTheme.colorScheme.error,
-                        RoundedCornerShape(8.dp),
-                    ),
-            )
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(34.dp)
-                    .background(
-                        MiuixTheme.colorScheme.primary.copy(alpha = 0.55f),
-                        RoundedCornerShape(8.dp),
-                    ),
-            )
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(40.dp)
-                    .background(
-                        MiuixTheme.colorScheme.onSurface.copy(alpha = 0.75f),
-                        RoundedCornerShape(8.dp),
-                    ),
-            )
-        }
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .fillMaxHeight()
-                .fillMaxWidth(0.58f)
-                .then(
-                    if (effect.enabled) {
-                        Modifier.hazeEffect(state = hazeState, style = style)
-                    } else {
-                        Modifier
-                    },
-                ),
-        )
     }
 }
 
