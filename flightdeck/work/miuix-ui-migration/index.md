@@ -2,11 +2,11 @@
 
 ## State
 
-Implementation complete. Awaiting UI and Root behavior validation on a rooted Android device.
+Bottom-bar frost intensity now progresses continuously from a fully opaque zero state to the existing strongest state. Awaiting CI/build verification and rooted-device UI and Root behavior validation.
 
 ## Next
 
-Run the `构建管理器` workflow once, then install its APK artifact on a rooted Magisk device; inspect the dashboard, services, and log pages in light/dark modes, then verify module installation, reboot, refresh, logging, and service toggling.
+Run the `构建管理器` workflow once, then install its APK artifact on a rooted device and confirm the bottom-bar frost slider changes the live bar and preview continuously down to 0%; continue the dashboard, services, logs, module installation, reboot, refresh, and service-toggle checks.
 
 ## Read now
 
@@ -14,6 +14,7 @@ Run the `构建管理器` workflow once, then install its APK artifact on a root
 - `flightdeck/knowledge/android/miuix-compose-toolchain-compatibility.md`
 - `flightdeck/knowledge/android/manager-operation-log.md`
 - `flightdeck/knowledge/android/locked-accessibility-service-recovery.md`
+- `flightdeck/knowledge/android/bottom-bar-frost-intensity.md`
 
 ## Read if
 
@@ -43,6 +44,7 @@ Verified:
 - Connected-device validation confirmed the empty search hint, live filtering, matching-result count, clear action, and preserved service controls. Manager version advanced to 2.6.0 (10); 13 unit tests and Android Lint pass.
 - Search now includes an inline filter action for system/user applications and disabled/enabled services. Selections are ORed within each category and ANDed across application type and service state; an empty or fully selected category is unrestricted.
 - Connected-device validation confirmed the filter panel, enabled-only result reduction, active filter tint, result summary, and unchanged lock/switch controls. Manager version advanced to 2.7.0 (11); 13 unit tests pass and Android Lint reports no issues.
+- Removed the nonzero floors from bottom-bar blur, translucency, noise, and fallback tint so the settings slider now interpolates continuously from no frost to the existing strongest state; added endpoint coverage for 0%, 1%, and 25% plus a 1% near-zero case.
 
 ## Open questions
 
@@ -50,3 +52,4 @@ Verified:
 - Dashboard screenshots could not be captured because no Android device or emulator is connected.
 - Log persistence, clipboard output, and clear behavior require connected-device validation.
 - The shell regression test could not be rerun in this Windows environment because no Bash or WSL distribution is installed.
+- Local Gradle verification cannot run because this Windows environment has no Android SDK and neither `ANDROID_HOME` nor `local.properties` supplies one.

@@ -49,10 +49,10 @@ internal fun bottomBarFrostSpec(value: Float): BottomBarFrostSpec {
 
     return BottomBarFrostSpec(
         enabled = true,
-        blurRadiusDp = 12f + (40f * frost),
-        tintAlpha = 0.88f - (0.46f * frost),
-        noiseFactor = 0.02f + (0.08f * frost),
-        fallbackAlpha = 0.94f - (0.26f * frost),
+        blurRadiusDp = 52f * frost,
+        tintAlpha = 1f - (0.58f * frost),
+        noiseFactor = 0.10f * frost,
+        fallbackAlpha = 1f - (0.32f * frost),
     )
 }
 
