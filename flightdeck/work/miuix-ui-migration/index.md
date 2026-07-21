@@ -2,11 +2,11 @@
 
 ## State
 
-Bottom-bar frost intensity now progresses continuously from a fully opaque zero state to the existing strongest state. Awaiting CI/build verification and rooted-device UI and Root behavior validation.
+Bottom-bar frost intensity progresses continuously from a fully opaque zero state to the existing strongest state. The manager APK now builds with unit tests and Android Lint passing; rooted-device UI and Root behavior validation remain.
 
 ## Next
 
-Run the `构建管理器` workflow once, then install its APK artifact on a rooted device and confirm the bottom-bar frost slider changes the live bar and preview continuously down to 0%; continue the dashboard, services, logs, module installation, reboot, refresh, and service-toggle checks.
+Install `app/build/outputs/apk/debug/app-debug.apk` on a rooted device and confirm the bottom-bar frost slider changes the live bar and preview continuously down to 0%; continue the dashboard, services, logs, module installation, reboot, refresh, and service-toggle checks.
 
 ## Read now
 
@@ -15,6 +15,7 @@ Run the `构建管理器` workflow once, then install its APK artifact on a root
 - `flightdeck/knowledge/android/manager-operation-log.md`
 - `flightdeck/knowledge/android/locked-accessibility-service-recovery.md`
 - `flightdeck/knowledge/android/bottom-bar-frost-intensity.md`
+- `flightdeck/knowledge/android/local-windows-android-build.md`
 
 ## Read if
 
@@ -45,6 +46,7 @@ Verified:
 - Search now includes an inline filter action for system/user applications and disabled/enabled services. Selections are ORed within each category and ANDed across application type and service state; an empty or fully selected category is unrestricted.
 - Connected-device validation confirmed the filter panel, enabled-only result reduction, active filter tint, result summary, and unchanged lock/switch controls. Manager version advanced to 2.7.0 (11); 13 unit tests pass and Android Lint reports no issues.
 - Removed the nonzero floors from bottom-bar blur, translucency, noise, and fallback tint so the settings slider now interpolates continuously from no frost to the existing strongest state; added endpoint coverage for 0%, 1%, and 25% plus a 1% near-zero case.
+- Locally ran the CI-equivalent clean, unit-test, Android Lint, and debug assembly tasks successfully (56 tasks). Verified manager 2.9.1 (24), the APK's v2 signature, and byte-identical SHA-256 values for the generated and embedded Root module ZIP.
 
 ## Open questions
 
@@ -52,4 +54,3 @@ Verified:
 - Dashboard screenshots could not be captured because no Android device or emulator is connected.
 - Log persistence, clipboard output, and clear behavior require connected-device validation.
 - The shell regression test could not be rerun in this Windows environment because no Bash or WSL distribution is installed.
-- Local Gradle verification cannot run because this Windows environment has no Android SDK and neither `ANDROID_HOME` nor `local.properties` supplies one.
