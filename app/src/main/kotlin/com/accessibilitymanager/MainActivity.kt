@@ -410,9 +410,10 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun showModuleFailure(state: RootModuleInstaller.State) {
+        val moduleDisabled = state == RootModuleInstaller.State.MODULE_DISABLED
         val title: Int
         val message: Int
-        if (state == RootModuleInstaller.State.MODULE_DISABLED) {
+        if (moduleDisabled) {
             title = R.string.module_disabled_title
             message = R.string.module_disabled_message
         } else {
@@ -427,12 +428,16 @@ class MainActivity : ComponentActivity() {
             }
         }
         homeState = homeState.copy(
-            moduleNotice = ModuleNotice(
-                title,
-                message,
-                StateAction.RETRY_MODULE,
-                R.string.retry,
-            ),
+            moduleNotice = if (moduleDisabled) {
+                ModuleNotice(title, message)
+            } else {
+                ModuleNotice(
+                    title,
+                    message,
+                    StateAction.RETRY_MODULE,
+                    R.string.retry,
+                )
+            },
         )
         addLog(
             ManagerLogLevel.ERROR,
@@ -501,6 +506,9 @@ private data class ModuleNotice(
     @param:StringRes val actionText: Int? = null,
     val loading: Boolean = false,
 )
+
+private val ModuleNotice.isModuleDisabled: Boolean
+    get() = title == R.string.module_disabled_title
 
 private enum class StateAction {
     RETRY_MODULE,
@@ -720,6 +728,7 @@ private fun DashboardPage(
     onAction: (StateAction) -> Unit,
     scrollBehavior: ScrollBehavior,
 ) {
+    val moduleNotice = state.moduleNotice
     LazyColumn(
         modifier = Modifier
             .fillMaxHeight()
@@ -733,7 +742,7 @@ private fun DashboardPage(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                state.moduleNotice?.let { notice ->
+                moduleNotice?.takeUnless { it.isModuleDisabled }?.let { notice ->
                     ModuleNoticeCard(notice = notice, onAction = onAction)
                 }
                 StatusOverview(
@@ -742,6 +751,9 @@ private fun DashboardPage(
                     onOpenServices = onOpenServices,
                     onAction = onAction,
                 )
+                moduleNotice?.takeIf { it.isModuleDisabled }?.let { notice ->
+                    ModuleNoticeCard(notice = notice, onAction = onAction)
+                }
                 ManagerInformationCard()
             }
         }
@@ -809,7 +821,7 @@ private fun ServicesPage(
         contentPadding = innerPadding,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        state.moduleNotice?.let { notice ->
+        state.moduleNotice?.takeUnless { it.isModuleDisabled }?.let { notice ->
             item(key = "module-notice") {
                 ModuleNoticeCard(notice = notice, onAction = onAction)
             }
@@ -1342,6 +1354,16 @@ private fun ModuleNoticeCard(
     notice: ModuleNotice,
     onAction: (StateAction) -> Unit,
 ) {
+    val titleColor = if (notice.isModuleDisabled) {
+        MiuixTheme.colorScheme.error
+    } else {
+        MiuixTheme.colorScheme.onSurface
+    }
+    val messageColor = if (notice.isModuleDisabled) {
+        MiuixTheme.colorScheme.error
+    } else {
+        MiuixTheme.colorScheme.onSurfaceVariantSummary
+    }
     Card(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -1354,14 +1376,14 @@ private fun ModuleNoticeCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = stringResource(notice.title),
-                    color = MiuixTheme.colorScheme.onSurface,
+                    color = titleColor,
                     style = MiuixTheme.textStyles.headline1,
                     fontWeight = FontWeight.Medium,
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
                     text = stringResource(notice.message),
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    color = messageColor,
                     style = MiuixTheme.textStyles.body2,
                 )
             }
