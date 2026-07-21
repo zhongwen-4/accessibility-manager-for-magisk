@@ -34,6 +34,7 @@ EOF
 
 cat > "$MOCK_BIN/settings" <<'EOF'
 #!/usr/bin/env sh
+[ "${MOCK_SETTINGS_FAILURE:-0}" = "1" ] && exit 1
 if [ "$1" = "--user" ]; then
   user=$2
   shift 2
@@ -141,5 +142,28 @@ assert_equal "$beta" "$(cat "$TEST_ROOT/enabled.10")" "exact mode replaces enabl
 run_ctl disable "$beta" >/dev/null
 assert_equal '' "$(cat "$TEST_ROOT/enabled.10")" "disable last service clears list"
 assert_equal 0 "$(cat "$TEST_ROOT/global.10")" "global accessibility flag disabled"
+
+mkdir -p "$CONFIG_DIR"
+cat > "$CONFIG_DIR/config.conf" <<'EOF'
+USER_ID=10
+MODE=ensure
+ALLOW_EMPTY_EXACT=0
+EOF
+printf '%s\n' "$beta" > "$CONFIG_DIR/services.list"
+printf '%s\n' "$alpha:$beta" > "$TEST_ROOT/enabled.10"
+A11Y_MANAGER_CONFIG_DIR="$CONFIG_DIR" sh "$ROOT_DIR/uninstall.sh"
+assert_equal "$alpha" "$(cat "$TEST_ROOT/enabled.10")" "uninstall disables only configured services"
+assert_equal 1 "$(cat "$TEST_ROOT/global.10")" "uninstall keeps accessibility enabled for unrelated services"
+[ ! -e "$CONFIG_DIR" ] || fail "uninstall should remove the configuration directory"
+
+mkdir -p "$CONFIG_DIR"
+cp "$ROOT_DIR/config.conf.example" "$CONFIG_DIR/config.conf"
+printf '%s\n' "$beta" > "$CONFIG_DIR/services.list"
+printf '%s\n' "$alpha:$beta" > "$TEST_ROOT/enabled.10"
+if MOCK_SETTINGS_FAILURE=1 A11Y_MANAGER_CONFIG_DIR="$CONFIG_DIR" sh "$ROOT_DIR/uninstall.sh" 2>/dev/null; then
+  fail "uninstall should fail when configured services cannot be disabled"
+fi
+assert_equal "$alpha:$beta" "$(cat "$TEST_ROOT/enabled.10")" "failed uninstall preserves enabled services"
+[ -d "$CONFIG_DIR" ] || fail "failed uninstall should retain configuration for recovery"
 
 printf 'All a11yctl tests passed.\n'

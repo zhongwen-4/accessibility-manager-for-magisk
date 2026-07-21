@@ -190,6 +190,32 @@ disable_service() {
   printf '已为用户 %s 停用：%s\n' "$user" "$component"
 }
 
+disable_configured_services() {
+  quiet=0
+  [ "$1" = "--quiet" ] && quiet=1
+  user=$(current_user) || return 1
+  acquire_lock || return 1
+  configured=$(configured_components) || return 1
+  current=$(enabled_value "$user") || {
+    say_error "无法读取 Android 用户 $user 的安全设置"
+    return 1
+  }
+
+  next=$current
+  while IFS= read -r component; do
+    [ -z "$component" ] && continue
+    next=$(remove_component "$next" "$component")
+  done <<EOF
+$configured
+EOF
+
+  if [ "$next" != "$current" ]; then
+    write_enabled_value "$user" "$next" || return 1
+  fi
+  [ "$quiet" -eq 0 ] && printf '已为用户 %s 停用本模块配置的无障碍服务。\n' "$user"
+  return 0
+}
+
 add_managed() {
   component=$1
   validate_component "$component" || return 1
@@ -304,6 +330,7 @@ show_help() {
   status COMPONENT        显示一个服务的启用和配置状态。
   enable COMPONENT        立即启用服务，但不修改持久配置。
   disable COMPONENT       立即停用服务，但不修改持久配置。
+  disable-configured      停用本模块配置的所有服务。
   add COMPONENT           将服务添加到持久配置。
   remove COMPONENT        从持久配置移除服务，但不立即停用。
   apply [--quiet]          立即应用持久配置。
@@ -336,6 +363,11 @@ case "$command_name" in
   disable)
     [ "$#" -eq 2 ] || { say_error "disable 命令需要 COMPONENT 参数"; exit 2; }
     disable_service "$2"
+    ;;
+  disable-configured)
+    [ "$#" -le 2 ] || { say_error "disable-configured 仅接受 --quiet 选项"; exit 2; }
+    [ "$#" -eq 1 ] || [ "$2" = "--quiet" ] || { say_error "未知的 disable-configured 选项：$2"; exit 2; }
+    disable_configured_services "${2:-}"
     ;;
   add)
     [ "$#" -eq 2 ] || { say_error "add 命令需要 COMPONENT 参数"; exit 2; }

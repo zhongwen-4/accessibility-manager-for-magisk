@@ -58,6 +58,7 @@ a11yctl enabled              列出当前已启用的服务
 a11yctl configured           列出模块配置的服务
 a11yctl enable COMPONENT     立即启用，但不写入持久配置
 a11yctl disable COMPONENT    立即停用，但不修改持久配置
+a11yctl disable-configured   停用模块配置的所有服务
 a11yctl add COMPONENT        加入持久配置
 a11yctl remove COMPONENT     移出持久配置，但不立即停用
 a11yctl apply                立即应用配置
@@ -87,6 +88,8 @@ a11yctl capture              用当前已启用服务覆盖持久配置
 - `ALLOW_EMPTY_EXACT=0`：设为 `1` 后允许 `exact` 模式关闭所有无障碍服务。
 
 修改配置后执行 `su -c 'a11yctl apply'`，无需重启。
+
+卸载模块时会先从系统的已启用列表中移除 `services.list` 里的服务，但不会影响其他无障碍服务，然后再删除模块配置目录。
 
 ## 注意事项
 
