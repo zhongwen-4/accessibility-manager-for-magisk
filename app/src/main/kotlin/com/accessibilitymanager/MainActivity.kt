@@ -50,7 +50,9 @@ import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.LockOpen
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -72,6 +74,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.createBitmap
+import androidx.core.view.WindowCompat
 import com.accessibilitymanager.data.AccessibilityServicesRepository
 import com.accessibilitymanager.data.ManagerLogEntry
 import com.accessibilitymanager.data.ManagerLogLevel
@@ -85,8 +88,10 @@ import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
+import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Checkbox
 import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
+import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.InputField
@@ -95,6 +100,8 @@ import top.yukonga.miuix.kmp.basic.NavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationBarItem
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
+import top.yukonga.miuix.kmp.basic.Slider
+import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Switch
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
@@ -102,10 +109,12 @@ import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.darkColorScheme
 import top.yukonga.miuix.kmp.theme.lightColorScheme
+import top.yukonga.miuix.kmp.extra.SuperDropdown
 import top.yukonga.miuix.kmp.utils.PressFeedbackType
 import java.text.DateFormat
 import java.util.Date
 import java.util.concurrent.Executors
+import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
     private val executor = Executors.newSingleThreadExecutor()
@@ -115,7 +124,9 @@ class MainActivity : ComponentActivity() {
     private lateinit var repository: AccessibilityServicesRepository
     private lateinit var moduleInstaller: RootModuleInstaller
     private lateinit var logStore: ManagerLogStore
+    private lateinit var preferencesStore: ManagerPreferencesStore
     private var logEntries by mutableStateOf<List<ManagerLogEntry>>(emptyList())
+    private var managerPreferences by mutableStateOf(ManagerPreferences())
     private var homeState by mutableStateOf(
         HomeState(
             moduleNotice = ModuleNotice(
@@ -136,27 +147,61 @@ class MainActivity : ComponentActivity() {
         repository = AccessibilityServicesRepository(applicationContext)
         moduleInstaller = RootModuleInstaller(applicationContext)
         logStore = ManagerLogStore(applicationContext)
+        preferencesStore = ManagerPreferencesStore(applicationContext)
+        managerPreferences = preferencesStore.load()
         logEntries = logStore.load()
         addLog(ManagerLogLevel.INFO, R.string.log_app_started)
 
         setContent {
-            MiuixTheme(colors = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()) {
+            val systemDarkTheme = isSystemInDarkTheme()
+            val darkTheme = when (managerPreferences.themeMode) {
+                ManagerThemeMode.SYSTEM -> systemDarkTheme
+                ManagerThemeMode.LIGHT -> false
+                ManagerThemeMode.DARK -> true
+            }
+            SideEffect {
+                WindowCompat.getInsetsController(window, window.decorView).apply {
+                    isAppearanceLightStatusBars = !darkTheme
+                    isAppearanceLightNavigationBars = !darkTheme
+                }
+            }
+            MiuixTheme(colors = if (darkTheme) darkColorScheme() else lightColorScheme()) {
                 AccessibilityManagerScreen(
                     state = homeState,
                     logEntries = logEntries,
                     controlsEnabled = moduleReady,
+                    themeMode = managerPreferences.themeMode,
+                    bottomBarFrost = managerPreferences.bottomBarFrost,
                     onRefresh = ::refresh,
                     onToggle = ::toggleService,
                     onSetLocked = ::setServiceLocked,
                     onAction = ::performStateAction,
                     onCopyLogs = ::copyLogs,
                     onClearLogs = ::clearLogs,
+                    onThemeModeChange = ::setThemeMode,
+                    onBottomBarFrostChange = ::previewBottomBarFrost,
+                    onBottomBarFrostChangeFinished = ::saveBottomBarFrost,
                 )
             }
         }
 
         loadServices(showFullProgress = true)
         ensureModuleReady()
+    }
+
+    private fun setThemeMode(themeMode: ManagerThemeMode) {
+        managerPreferences = managerPreferences.copy(themeMode = themeMode)
+        preferencesStore.saveThemeMode(themeMode)
+    }
+
+    private fun previewBottomBarFrost(value: Float) {
+        managerPreferences = managerPreferences.copy(
+            bottomBarFrost = sanitizeBottomBarFrost(value),
+        )
+    }
+
+    private fun saveBottomBarFrost() {
+        preferencesStore.saveBottomBarFrost(managerPreferences.bottomBarFrost)
     }
 
     private fun refresh() {
@@ -520,6 +565,7 @@ private enum class ManagerPage {
     HOME,
     SERVICES,
     LOGS,
+    SETTINGS,
 }
 
 private const val FILTER_SYSTEM_APPS = 1
@@ -545,12 +591,17 @@ private fun AccessibilityManagerScreen(
     state: HomeState,
     logEntries: List<ManagerLogEntry>,
     controlsEnabled: Boolean,
+    themeMode: ManagerThemeMode,
+    bottomBarFrost: Float,
     onRefresh: () -> Unit,
     onToggle: (ServiceUiModel, Boolean) -> Unit,
     onSetLocked: (ServiceUiModel, Boolean) -> Unit,
     onAction: (StateAction) -> Unit,
     onCopyLogs: () -> Unit,
     onClearLogs: () -> Unit,
+    onThemeModeChange: (ManagerThemeMode) -> Unit,
+    onBottomBarFrostChange: (Float) -> Unit,
+    onBottomBarFrostChangeFinished: () -> Unit,
 ) {
     var selectedPage by remember { mutableStateOf(ManagerPage.HOME) }
     var serviceSearchVisible by rememberSaveable { mutableStateOf(false) }
@@ -560,21 +611,40 @@ private fun AccessibilityManagerScreen(
     val homeScrollBehavior = MiuixScrollBehavior()
     val servicesScrollBehavior = MiuixScrollBehavior()
     val logsScrollBehavior = MiuixScrollBehavior()
+    val settingsScrollBehavior = MiuixScrollBehavior()
     val currentScrollBehavior = when (selectedPage) {
         ManagerPage.HOME -> homeScrollBehavior
         ManagerPage.SERVICES -> servicesScrollBehavior
         ManagerPage.LOGS -> logsScrollBehavior
+        ManagerPage.SETTINGS -> settingsScrollBehavior
     }
-    val bottomBarHazeState = rememberHazeState()
+    val frost = sanitizeBottomBarFrost(bottomBarFrost)
+    val bottomBarHazeState = rememberHazeState(blurEnabled = frost > 0.01f)
     val bottomBarSurface = MiuixTheme.colorScheme.surface
-    val bottomBarGlassStyle = remember(bottomBarSurface) {
+    val bottomBarGlassStyle = remember(bottomBarSurface, frost) {
         HazeStyle(
             backgroundColor = bottomBarSurface,
-            tint = HazeTint(bottomBarSurface.copy(alpha = 0.72f)),
-            blurRadius = 24.dp,
-            noiseFactor = 0.08f,
-            fallbackTint = HazeTint(bottomBarSurface.copy(alpha = 0.94f)),
+            tint = HazeTint(
+                bottomBarSurface.copy(alpha = 0.96f - (0.4f * frost)),
+            ),
+            blurRadius = (40f * frost).dp,
+            noiseFactor = 0.13f * frost,
+            fallbackTint = HazeTint(
+                bottomBarSurface.copy(alpha = 0.98f - (0.07f * frost)),
+            ),
         )
+    }
+    val refreshAction: @Composable () -> Unit = {
+        if (state.refreshing) {
+            CircularProgressIndicator(size = 24.dp)
+        } else {
+            IconButton(onClick = onRefresh) {
+                Icon(
+                    imageVector = Icons.Rounded.Refresh,
+                    contentDescription = stringResource(R.string.refresh),
+                )
+            }
+        }
     }
 
     Scaffold(
@@ -584,25 +654,12 @@ private fun AccessibilityManagerScreen(
                     ManagerPage.HOME -> stringResource(R.string.app_name)
                     ManagerPage.SERVICES -> stringResource(R.string.services)
                     ManagerPage.LOGS -> stringResource(R.string.logs)
+                    ManagerPage.SETTINGS -> stringResource(R.string.settings)
                 },
                 actions = {
-                    if (selectedPage == ManagerPage.LOGS) {
-                        if (logEntries.isNotEmpty()) {
-                            IconButton(onClick = onCopyLogs) {
-                                Icon(
-                                    imageVector = Icons.Rounded.ContentCopy,
-                                    contentDescription = stringResource(R.string.copy_logs),
-                                )
-                            }
-                            IconButton(onClick = onClearLogs) {
-                                Icon(
-                                    imageVector = Icons.Rounded.DeleteSweep,
-                                    contentDescription = stringResource(R.string.clear_logs),
-                                )
-                            }
-                        }
-                    } else {
-                        if (selectedPage == ManagerPage.SERVICES) {
+                    when (selectedPage) {
+                        ManagerPage.HOME -> refreshAction()
+                        ManagerPage.SERVICES -> {
                             IconButton(
                                 onClick = {
                                     serviceSearchVisible = !serviceSearchVisible
@@ -628,17 +685,25 @@ private fun AccessibilityManagerScreen(
                                     ),
                                 )
                             }
+                            refreshAction()
                         }
-                        if (state.refreshing) {
-                            CircularProgressIndicator(size = 24.dp)
-                        } else {
-                            IconButton(onClick = onRefresh) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Refresh,
-                                    contentDescription = stringResource(R.string.refresh),
-                                )
+                        ManagerPage.LOGS -> {
+                            if (logEntries.isNotEmpty()) {
+                                IconButton(onClick = onCopyLogs) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.ContentCopy,
+                                        contentDescription = stringResource(R.string.copy_logs),
+                                    )
+                                }
+                                IconButton(onClick = onClearLogs) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.DeleteSweep,
+                                        contentDescription = stringResource(R.string.clear_logs),
+                                    )
+                                }
                             }
                         }
+                        ManagerPage.SETTINGS -> Unit
                     }
                 },
                 scrollBehavior = currentScrollBehavior,
@@ -672,6 +737,13 @@ private fun AccessibilityManagerScreen(
                     onClick = { selectedPage = ManagerPage.LOGS },
                     icon = Icons.AutoMirrored.Rounded.Article,
                     label = stringResource(R.string.logs),
+                )
+                NavigationBarItem(
+                    modifier = Modifier.weight(1f),
+                    selected = selectedPage == ManagerPage.SETTINGS,
+                    onClick = { selectedPage = ManagerPage.SETTINGS },
+                    icon = Icons.Rounded.Settings,
+                    label = stringResource(R.string.settings),
                 )
             }
         },
@@ -712,6 +784,16 @@ private fun AccessibilityManagerScreen(
                     innerPadding = innerPadding,
                     entries = logEntries,
                     scrollBehavior = logsScrollBehavior,
+                )
+
+                ManagerPage.SETTINGS -> SettingsPage(
+                    innerPadding = innerPadding,
+                    themeMode = themeMode,
+                    bottomBarFrost = frost,
+                    onThemeModeChange = onThemeModeChange,
+                    onBottomBarFrostChange = onBottomBarFrostChange,
+                    onBottomBarFrostChangeFinished = onBottomBarFrostChangeFinished,
+                    scrollBehavior = settingsScrollBehavior,
                 )
             }
         }
@@ -1056,6 +1138,101 @@ private fun ServiceFilterOption(
             state = ToggleableState(checked),
             onClick = onCheckedChange,
         )
+    }
+}
+
+@Composable
+private fun SettingsPage(
+    innerPadding: PaddingValues,
+    themeMode: ManagerThemeMode,
+    bottomBarFrost: Float,
+    onThemeModeChange: (ManagerThemeMode) -> Unit,
+    onBottomBarFrostChange: (Float) -> Unit,
+    onBottomBarFrostChangeFinished: () -> Unit,
+    scrollBehavior: ScrollBehavior,
+) {
+    val themeOptions = listOf(
+        stringResource(R.string.theme_system),
+        stringResource(R.string.theme_light),
+        stringResource(R.string.theme_dark),
+    )
+    val frostPercent = (sanitizeBottomBarFrost(bottomBarFrost) * 100f).roundToInt()
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxHeight()
+            .nestedScroll(scrollBehavior.nestedScrollConnection)
+            .padding(horizontal = 12.dp),
+        contentPadding = innerPadding,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        item(key = "appearance-title") {
+            SmallTitle(
+                text = stringResource(R.string.appearance),
+                insideMargin = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            )
+        }
+        item(key = "appearance-settings") {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                insideMargin = PaddingValues(0.dp),
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    SuperDropdown(
+                        items = themeOptions,
+                        selectedIndex = themeMode.ordinal,
+                        title = stringResource(R.string.theme),
+                        summary = stringResource(R.string.theme_summary),
+                        onSelectedIndexChange = { index ->
+                            ManagerThemeMode.entries.getOrNull(index)?.let(onThemeModeChange)
+                        },
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    BasicComponent(
+                        title = stringResource(R.string.bottom_bar_frost),
+                        summary = stringResource(R.string.bottom_bar_frost_summary),
+                        endActions = {
+                            Text(
+                                text = stringResource(R.string.frost_percent, frostPercent),
+                                modifier = Modifier.align(Alignment.CenterVertically),
+                                color = MiuixTheme.colorScheme.onSurfaceVariantActions,
+                                style = MiuixTheme.textStyles.body2,
+                            )
+                        },
+                        bottomAction = {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 10.dp),
+                            ) {
+                                Slider(
+                                    value = bottomBarFrost,
+                                    onValueChange = onBottomBarFrostChange,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    valueRange = 0f..1f,
+                                    onValueChangeFinished = onBottomBarFrostChangeFinished,
+                                    keyPoints = listOf(0f, 0.25f, 0.5f, 0.75f, 1f),
+                                    showKeyPoints = true,
+                                )
+                                Row(modifier = Modifier.fillMaxWidth()) {
+                                    Text(
+                                        text = stringResource(R.string.frost_none),
+                                        modifier = Modifier.weight(1f),
+                                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                        style = MiuixTheme.textStyles.body2,
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.frost_strong),
+                                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                                        style = MiuixTheme.textStyles.body2,
+                                    )
+                                }
+                            }
+                        },
+                    )
+                }
+            }
+        }
     }
 }
 
