@@ -1550,7 +1550,11 @@ private fun ModuleNoticeCard(
                 CircularProgressIndicator(size = 28.dp)
                 Spacer(Modifier.width(14.dp))
             }
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = if (notice.isModuleDisabled) 10.dp else 0.dp),
+            ) {
                 Text(
                     text = stringResource(notice.title),
                     color = titleColor,
